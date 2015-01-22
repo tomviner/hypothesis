@@ -149,6 +149,24 @@ class SearchStrategy(object):
         else:
             return deepcopy(value)
 
+    def complexity(self, value):
+        """
+        Return a value which in some sense represents how "complicated" this
+        value is.
+
+        The only requirements on this function are:
+
+            1. That it does not throw an exception if could_have_produced(
+               value)
+            2. That any two results from this function on a given instance of
+               a strategy are orderable. Note that there is no requirement that
+               you can compare two values from different strategies.
+
+        In general you will get better results if complexity(t) < complexity(x)
+        for t in simplify(x) but this is not a requirement.
+        """
+        return 0
+
     def simplify(self, value):
         """Yield a number of values matching this descriptor that are in some
         sense "simpelr" than value. What simpler means is entirely up to
@@ -236,6 +254,12 @@ class IntStrategy(SearchStrategy):
     def could_have_produced(self, x):
         return isinstance(x, integer_types)
 
+    def complexity(self, value):
+        return (
+            value < 0,
+            abs(value),
+        )
+
     def simplify(self, x):
         if x < 0:
             yield -x
@@ -299,6 +323,9 @@ class BoundedIntStrategy(SearchStrategy):
             activation_chance=min(0.5, 3.0 / (end - start + 1))
         )
 
+    def complexity(self, value):
+        return value
+
     def produce(self, random, parameter):
         if self.start == self.end:
             return self.start
@@ -329,6 +356,11 @@ class FloatStrategy(SearchStrategy):
     def __init__(self):
         SearchStrategy.__init__(self)
         self.int_strategy = RandomGeometricIntStrategy()
+
+    def complexity(self, value):
+        is_fractional = int(value) != value
+        is_negative = value < 0
+        return (is_fractional, is_negative, abs(value))
 
     def simplify(self, x):
         if x < 0:
@@ -461,6 +493,13 @@ class TupleStrategy(SearchStrategy):
             x.parameter for x in self.element_strategies
         )
         self.has_immutable_data = all(s.has_immutable_data for s in strategies)
+
+    def complexity(self, value):
+        assert len(value) == len(self.element_strategies)
+        return tuple(
+            s.complexity(v)
+            for s, v in zip(self.element_strategies, value)
+        )
 
     def could_have_produced(self, xs):
         if xs.__class__ != self.tuple_type:
