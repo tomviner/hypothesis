@@ -11,6 +11,7 @@ from hypothesis.internal.utils.reflection import (
 )
 from hypothesis.internal.tracker import Tracker
 from hypothesis.examplesource import ExampleSource
+from hypothesis.collectors import DataCollector
 
 
 def assume(condition):
@@ -106,6 +107,9 @@ class Verifier(object):
             """Have we exceeded our timeout?"""
             return time.time() >= start_time + self.timeout
 
+        # Tracks minimal interesting examples for each feature
+        minteresting = {}
+
         skipped_examples = 0
         examples_seen = 0
         # At present this loop will never exit normally . This needs proper
@@ -138,8 +142,13 @@ class Verifier(object):
                 skipped_examples = 0
             examples_found += 1
             try:
-                is_falsifying_example = not hypothesis(
-                    *search_strategy.copy(args))
+                collector = DataCollector()
+                with collector:
+                    is_falsifying_example = not hypothesis(
+                        *search_strategy.copy(args))
+                for feature in collector.features_seen:
+                    if feature not in minteresting:
+                        minteresting[feature] = args
             except AssertionError:
                 is_falsifying_example = True
             except UnsatisfiedAssumption:
@@ -150,6 +159,17 @@ class Verifier(object):
                 falsifying_examples.append(args)
         run_time = time.time() - start_time
         timed_out = run_time >= self.timeout
+
+        if not falsifying_examples and storage is not None:
+            improved = True
+            while improved:
+                improved = False
+                current_examples = falsifying_examples + list(
+                    minteresting.values()
+                )
+                for example in current_examples:
+                    if track_seen.track(example) > 1:
+                        continue
 
         if not falsifying_examples:
             if satisfying_examples < min_satisfying_examples:
