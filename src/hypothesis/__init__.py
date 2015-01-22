@@ -8,6 +8,7 @@ from hypothesis.verifier import (
 )
 
 from hypothesis.testdecorators import given
+from hypothesis.collectors import note_feature
 
 __all__ = [
     'falsify',
@@ -17,4 +18,5 @@ __all__ = [
     'Verifier',
     'assume',
     'given',
+    'note_feature',
 ]
