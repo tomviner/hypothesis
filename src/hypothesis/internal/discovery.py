@@ -1,9 +1,11 @@
 from contextlib import contextmanager
+from hypothesis.internal.compat import text_type, binary_type
 import sys
 import os
 import re
 
 TRAILING_PY = re.compile(r"\.py$")
+LEADING_TEST = re.compile(r"^test_")
 
 
 @contextmanager
@@ -30,6 +32,11 @@ def import_file(f):
 
 
 def import_files(path):
+    if not isinstance(path, (text_type, binary_type)):
+        for p in path:
+            for f in import_files(p):
+                yield f
+        return
     if not os.path.exists(path):
         raise BadImport("No such file %r" % (path,))
     elif os.path.isdir(path):
@@ -41,3 +48,9 @@ def import_files(path):
         raise ValueError("Not a python file %r" % (path,))
     else:
         yield import_file(path)
+
+
+def tests_in_module(module):
+    for k, v in vars(module).items():
+        if LEADING_TEST.search(k) and hasattr(v, 'hypothesis_descriptor'):
+            yield k, v

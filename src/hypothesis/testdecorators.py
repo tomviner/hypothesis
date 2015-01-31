@@ -59,5 +59,10 @@ def given(*generator_arguments, **kwargs):
             raise Flaky(test, falsifying_example)
         wrapped_test.__name__ = test.__name__
         wrapped_test.__doc__ = test.__doc__
+        wrapped_test.hypothesis_descriptor = (
+            generator_arguments, kwargs
+        )
+        wrapped_test.verifier = verifier
+        wrapped_test.original_test = test
         return wrapped_test
     return run_test_with_generator
