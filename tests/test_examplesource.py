@@ -108,6 +108,17 @@ def test_example_source_terminates_if_just_from_db():
         next(its)
 
 
+def test_can_mark_from_the_db():
+    db = ExampleDatabase()
+    storage = db.storage_for(int)
+    storage.save(1)
+    source = ExampleSource(
+        random=random.Random(), storage=storage, strategy=None)
+    its = iter(source)
+    assert next(its) == 1
+    source.mark_bad()
+
+
 def test_errors_if_you_mark_bad_twice():
     storage = None
     if hs.default.database is not None:
@@ -134,3 +145,33 @@ def test_errors_if_you_mark_bad_before_fetching():
     )
     with pytest.raises(ValueError):
         source.mark_bad()
+
+
+def test_tries_a_bunch_of_things_if_all_good():
+    source = ExampleSource(
+        random=random.Random(),
+        strategy=StrategyTable.default().strategy(float),
+        storage=None,
+    )
+    it = iter(source)
+    for _ in hrange(1000):
+        next(it)
+    assert len(source.counts) < 500
+    assert len([
+        c for c in source.counts if c > 2
+    ]) > 3
+
+
+def test_does_not_try_all_bad_examples_too_many_times():
+    source = ExampleSource(
+        random=random.Random(),
+        strategy=StrategyTable.default().strategy(float),
+        storage=None,
+    )
+    it = iter(source)
+    for _ in hrange(1000):
+        next(it)
+        source.mark_bad()
+        assert source.total_count == source.total_bad_count
+    print(zip(source.bad_counts, source.counts))
+    assert all(c <= 2 for c in source.counts)

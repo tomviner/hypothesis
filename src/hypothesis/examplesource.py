@@ -75,6 +75,7 @@ class ExampleSource(object):
 
     def new_parameter(self):
         result = self.strategy.parameter.draw(self.random)
+        self.last_parameter_index = len(self.parameters)
         self.parameters.append(result)
         self.bad_counts.append(0)
         self.counts.append(1)
@@ -82,19 +83,15 @@ class ExampleSource(object):
 
     def draw_parameter_score(self, i):
         prior_strength = 1.0
-        alpha_prior = (
-            prior_strength * float(self.total_bad_count) / self.total_count)
-        beta_prior = prior_strength - alpha_prior
+        beta_prior = prior_strength * float(
+            self.total_bad_count + 1.0) / (1.0 + self.total_count)
+        alpha_prior = prior_strength - beta_prior
 
         beta = self.bad_counts[i] + beta_prior
         alpha = self.counts[i] - self.bad_counts[i] + alpha_prior
         assert self.counts[i] > 0
         assert self.bad_counts[i] >= 0
         assert self.bad_counts[i] <= self.counts[i]
-        if beta <= 0:
-            return 1.0
-        if alpha <= 0:
-            return 0.0
         return self.random.betavariate(alpha, beta)
 
     def pick_a_parameter(self):
@@ -129,7 +126,6 @@ class ExampleSource(object):
                     best_score = score
                     best_index = i
             if best_index < 0:
-                self.last_parameter_index = len(self.parameters)
                 return self.new_parameter()
             self.last_parameter_index = best_index
             self.counts[self.last_parameter_index] += 1
