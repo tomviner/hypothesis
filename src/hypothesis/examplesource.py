@@ -34,7 +34,7 @@ class ExampleSource(object):
     def __init__(
         self,
         random, strategy, storage,
-        min_parameters=25, min_tries=2,
+        min_parameters=25, min_tries=2, max_while_bad=2,
     ):
         if not isinstance(random, Random):
             raise ValueError('A Random is required but got %r' % (random,))
@@ -48,6 +48,7 @@ class ExampleSource(object):
         self.parameters = []
         self.last_parameter_index = -1
         self.min_parameters = min_parameters
+        self.max_while_bad = max_while_bad
         self.min_tries = min_tries
         self.bad_counts = []
         self.counts = []
@@ -80,22 +81,30 @@ class ExampleSource(object):
         return result
 
     def draw_parameter_score(self, i):
-        beta_prior = 2.0 * (
-            1.0 + self.total_bad_count
-        ) / (1.0 + self.total_count)
-        alpha_prior = 2.0 - beta_prior
+        prior_strength = 1.0
+        alpha_prior = (
+            prior_strength * float(self.total_bad_count) / self.total_count)
+        beta_prior = prior_strength - alpha_prior
 
-        beta = beta_prior + self.bad_counts[i]
-        alpha = alpha_prior + self.counts[i] - self.bad_counts[i]
+        beta = self.bad_counts[i] + beta_prior
+        alpha = self.counts[i] - self.bad_counts[i] + alpha_prior
         assert self.counts[i] > 0
         assert self.bad_counts[i] >= 0
         assert self.bad_counts[i] <= self.counts[i]
+        if beta <= 0:
+            return 1.0
+        if alpha <= 0:
+            return 0.0
         return self.random.betavariate(alpha, beta)
 
     def pick_a_parameter(self):
         self.mark_set = False
         self.total_count += 1
-        if self.parameters and self.counts[-1] < self.min_tries:
+        if (
+            self.parameters and
+            self.counts[-1] < self.min_tries and
+            not self.bad_counts[-1]
+        ):
             index = len(self.parameters) - 1
             self.counts[index] += 1
             self.last_parameter_index = index
@@ -107,8 +116,14 @@ class ExampleSource(object):
                 self.random.randint(0, len(self.parameters) - 1)
             )
             best_index = -1
-
-            for i in hrange(len(self.parameters)):
+            indices = list(hrange(len(self.parameters)))
+            self.random.shuffle(indices)
+            for i in indices:
+                if (
+                    self.bad_counts[i] == self.counts[i] and
+                    self.bad_counts[i] >= self.max_while_bad
+                ):
+                    continue
                 score = self.draw_parameter_score(i)
                 if score > best_score:
                     best_score = score
