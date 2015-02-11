@@ -1,6 +1,6 @@
 import pytest
-from testmachine import TestMachine
-from .common import generate
+from hypothesis.testmachine import TestMachine
+from hypothesis.testmachine.common import generate
 
 
 def test_does_not_hide_error_in_generate():

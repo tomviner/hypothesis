@@ -8,9 +8,9 @@ Example output:
     Unable to find a failing program of length <= 200 after 500 iterations
 """
 
-from testmachine import TestMachine, consume
-from testmachine.common import operation, generate, basic_operations
-from testmachine.operations import Dup
+from hypothesis.testmachine import TestMachine, consume
+from hypothesis.testmachine.common import operation, generate, basic_operations
+from hypothesis.testmachine.operations import Dup
 
 machine = TestMachine()
 

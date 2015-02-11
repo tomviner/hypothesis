@@ -9,7 +9,7 @@ Example output:
     assert associative_add(t4, t3, t2)
 """
 
-from testmachine import TestMachine
+from hypothesis.testmachine import TestMachine
 from random import Random
 
 # This is the object that we use to define the kind of test case we want to
@@ -19,7 +19,7 @@ machine = TestMachine()
 # testmachine.common defines a number of standard operations on different types
 # of variables. We're going to use some of those rather than implementing our
 # own.
-from testmachine.common import (
+from hypothesis.testmachine.common import (
     basic_operations, arithmetic_operations, generate, check
 )
 

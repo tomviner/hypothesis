@@ -16,8 +16,8 @@ Example output:
     assert t6.balanced()
 """
 
-from testmachine import TestMachine
-from testmachine.common import basic_operations, check, generate, operation
+from hypothesis.testmachine import TestMachine
+from hypothesis.testmachine.common import basic_operations, check, generate, operation
 
 
 # Our tree type is a classic binary tree

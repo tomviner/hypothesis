@@ -6,8 +6,8 @@ Example output:
     Unable to find a failing program of length <= 200 after 500 iterations
 """
 
-from testmachine import TestMachine
-from testmachine.common import ints, check
+from hypothesis.testmachine import TestMachine
+from hypothesis.testmachine.common import ints, check
 
 machine = TestMachine()
 

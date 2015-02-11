@@ -1,5 +1,5 @@
 import pytest
-from .examples import (
+from tests.testmachineexamples import (
     commutativeints, floats, nonuniquelists, unbalancedtrees, exiter, closeable
 )
 

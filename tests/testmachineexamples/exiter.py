@@ -6,8 +6,8 @@ Example output:
     die()
 """
 
-from testmachine import TestMachine
-from testmachine.common import operation
+from hypothesis.testmachine import TestMachine
+from hypothesis.testmachine.common import operation
 import os
 import traceback
 

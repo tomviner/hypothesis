@@ -8,8 +8,8 @@ Example output:
     assert unique(t2)
 """
 
-from testmachine import TestMachine
-from testmachine.common import ints, lists, check
+from hypothesis.testmachine import TestMachine
+from hypothesis.testmachine.common import ints, lists, check
 
 machine = TestMachine()
 
