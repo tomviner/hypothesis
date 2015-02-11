@@ -1,20 +1,36 @@
+# coding=utf-8
+
+# Copyright (C) 2013-2015 David R. MacIver (david@drmaciver.com)
+
+# This file is part of Hypothesis (https://github.com/DRMacIver/hypothesis)
+
+# This Source Code Form is subject to the terms of the Mozilla Public License,
+# v. 2.0. If a copy of the MPL was not distributed with this file, You can
+# obtain one at http://mozilla.org/MPL/2.0/.
+
+# END HEADER
+
+from __future__ import division, print_function, unicode_literals
+
 from random import Random
-from .context import requirements, consume
+
+from .context import consume, requirements
 
 
 class Operation(object):
+
     def __init__(
             self, argspec, target=None, targets=None, name=None, pattern=None,
             patterns=None):
         if pattern and patterns:
             raise ValueError(
-                "Cannot specify both a single and multiple patterns"
+                'Cannot specify both a single and multiple patterns'
             )
         if pattern:
             patterns = (pattern,)
         if target and targets:
             raise ValueError(
-                "Cannot specify both a single and multiple targets"
+                'Cannot specify both a single and multiple targets'
             )
         if target is not None:
             self.single_target = True
@@ -38,19 +54,19 @@ class Operation(object):
         return True
 
     def __repr__(self):
-        return "Operation(%s)" % self.display()
+        return 'Operation(%s)' % self.display()
 
     def compile(self, arguments, results):
         if self.patterns is None:
-            invocation = "{0}({1})".format(self.name, ', '.join(arguments))
+            invocation = '{0}({1})'.format(self.name, ', '.join(arguments))
             if results:
-                invocation = "%s = %s" % (', '.join(results), invocation)
+                invocation = '%s = %s' % (', '.join(results), invocation)
             return [invocation]
         else:
             patterns = self.patterns
             if results:
                 patterns = list(patterns)
-                patterns[-1] = "%s = %s" % (', '.join(results), patterns[-1])
+                patterns[-1] = '%s = %s' % (', '.join(results), patterns[-1])
             return [
                 pattern.format(*arguments)
                 for pattern in patterns
@@ -60,12 +76,12 @@ class Operation(object):
         return ()
 
     def display(self):
-        return "%s(%s)" % (
+        return '%s(%s)' % (
             self.name, ', '.join(map(repr, self.args()))
         )
 
     def invoke(self, context):
-        raise NotImplementedError("%s.invoke(context)" % (self.__class__,))
+        raise NotImplementedError('%s.invoke(context)' % (self.__class__,))
 
     def simulate(self, context):
         context.read(self.argspec)
@@ -74,6 +90,7 @@ class Operation(object):
 
 
 class ReadAndWrite(Operation):
+
     def __init__(
         self, function, **kwargs
     ):
@@ -96,6 +113,7 @@ class ReadAndWrite(Operation):
 
 
 class Mutate(ReadAndWrite):
+
     def __init__(
         self, function, argspec, name=None,
         pattern=None
@@ -108,6 +126,7 @@ class Mutate(ReadAndWrite):
 
 
 class BinaryOperator(ReadAndWrite):
+
     def __init__(self, operation, varstack, name):
         super(BinaryOperator, self).__init__(
             function=operation,
@@ -120,14 +139,15 @@ class BinaryOperator(ReadAndWrite):
         assert len(arguments) == 2
         assert len(results) <= 1
         x, y = arguments
-        invocation = " ".join((x, self.name, y))
+        invocation = ' '.join((x, self.name, y))
         if results:
-            return ["%s = %s" % (', '.join(results), invocation)]
+            return ['%s = %s' % (', '.join(results), invocation)]
         else:
             return [invocation]
 
 
 class UnaryOperator(ReadAndWrite):
+
     def __init__(self, operation, varstack, name):
         super(UnaryOperator, self).__init__(
             function=operation,
@@ -139,21 +159,22 @@ class UnaryOperator(ReadAndWrite):
     def compile(self, arguments, results):
         assert len(arguments) == 1
         assert len(results) <= 1
-        invocation = "".join((self.name, arguments[0]))
+        invocation = ''.join((self.name, arguments[0]))
         if results:
-            return ["{0} = {1}".format(', '.join(results), invocation)]
+            return ['{0} = {1}'.format(', '.join(results), invocation)]
         else:
             return [invocation]
 
 
 class Check(Operation):
+
     def __init__(self, test, argspec, name=None, pattern=None, patterns=None):
         name = name or test.__name__
         if pattern is None and patterns is None:
             arg_string = ', '.join(
-                ["{%d}" % (x,) for x in range(len(argspec))]
+                ['{%d}' % (x,) for x in range(len(argspec))]
             )
-            pattern = "assert %s(%s)" % (name, arg_string)
+            pattern = 'assert %s(%s)' % (name, arg_string)
 
         super(Check, self).__init__(
             argspec=argspec, name=name, pattern=pattern, patterns=patterns
@@ -167,8 +188,9 @@ class Check(Operation):
 
 
 class Push(Operation):
+
     def __init__(self, varstack, gen_value, value_formatter=None):
-        super(Push, self).__init__(argspec=(), target=varstack, name="push")
+        super(Push, self).__init__(argspec=(), target=varstack, name='push')
         self.gen_value = gen_value
         self.value_formatter = value_formatter or repr
 
@@ -177,7 +199,7 @@ class Push(Operation):
         assert len(results) <= 1
         v = self.gen_value()
         return [
-            "%s = %s" % (results[0], self.value_formatter(v))
+            '%s = %s' % (results[0], self.value_formatter(v))
         ]
 
     def args(self):
@@ -192,6 +214,7 @@ class InapplicableLanguage(Exception):
 
 
 class Language(object):
+
     def generate(self, heights, random):
         """
         :param heights: A dict of string names to integer counts of the number
@@ -210,6 +233,7 @@ class Language(object):
 
 
 class PushRandom(Language):
+
     def __init__(self, produce, target, name=None, value_formatter=None):
         super(PushRandom, self).__init__()
         self.produce = produce
@@ -236,6 +260,7 @@ class PushRandom(Language):
 
 
 class ChooseFrom(Language):
+
     def __init__(self, children):
         super(ChooseFrom, self).__init__()
         adjusted = []
@@ -263,6 +288,7 @@ class ChooseFrom(Language):
 
 
 class Drop(Operation):
+
     def __init__(self, varstack):
         super(Drop, self).__init__(
             argspec=(consume(varstack),)
@@ -276,6 +302,7 @@ class Drop(Operation):
 
 
 class DataShufflingOperation(Operation):
+
     def __init__(self, varstack):
         super(DataShufflingOperation, self).__init__(
             argspec=(varstack,) * self.height
