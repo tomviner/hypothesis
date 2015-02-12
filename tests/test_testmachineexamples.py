@@ -13,8 +13,8 @@
 from __future__ import division, print_function, unicode_literals
 
 import pytest
-from tests.testmachineexamples import floats, closeable, \
-    nonuniquelists, commutativeints, unbalancedtrees
+from tests.testmachineexamples import floats, closeable, nonuniquelists, \
+    commutativeints, unbalancedtrees
 
 
 @pytest.mark.parametrize('example', [floats, nonuniquelists, unbalancedtrees])
