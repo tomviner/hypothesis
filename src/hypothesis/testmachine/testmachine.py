@@ -14,6 +14,8 @@ from __future__ import division, print_function, unicode_literals
 
 import traceback
 
+from hypothesis.internal.compat import hrange
+
 from .context import RunContext, TestMachineError
 from .operations import ChooseFrom
 
@@ -63,7 +65,7 @@ class TestMachine(object):
     def trial_run(self):
         context = RunContext(simulation=self.simulation)
         try:
-            for _ in xrange(self.prog_length):
+            for _ in hrange(self.prog_length):
                 operation = self.language.generate_from(context)
                 context.execute(operation)
         finally:
@@ -114,7 +116,7 @@ class TestMachine(object):
     def generate_program(self):
         context = RunContext(simulation=True)
         results = []
-        for _ in xrange(self.prog_length):
+        for _ in hrange(self.prog_length):
             operation = self.language.generate_from(context)
             context.execute(operation)
             results.append(operation)
@@ -187,7 +189,7 @@ class TestMachine(object):
         return results
 
     def shrink(self, program):
-        for i in xrange(len(program)):
+        for i in hrange(len(program)):
             copy = list(program)
             del copy[i]
             yield self.prune_program(copy)

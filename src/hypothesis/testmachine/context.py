@@ -59,7 +59,7 @@ class VarStack(object):
         name, value = self.data[i]
         del self.data[i]
         self.context.on_read(name)
-        self.data = filter(lambda (n, v): n != name, self.data)
+        self.data = list(filter(lambda nv: nv[0] != name, self.data))
         return value
 
     def push(self, head):
