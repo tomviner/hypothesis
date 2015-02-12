@@ -12,8 +12,6 @@
 
 from __future__ import division, print_function, unicode_literals
 
-import os
-import argparse
 import traceback
 
 from .context import RunContext, TestMachineError
@@ -34,10 +32,8 @@ class TestMachine(object):
         print_output=True,
         simulation=False,
         verbose=False,
-        fork=False,
     ):
         self.verbose = verbose
-        self.fork = fork
         self.languages = []
         self.n_iters = n_iters
         self.prog_length = prog_length
@@ -55,47 +51,6 @@ class TestMachine(object):
 
     def __repr__(self):
         return 'TestMachine()'
-
-    def main(self, args=None):
-        parser = argparse.ArgumentParser(description='Run a testmachine')
-        parser.add_argument(
-            '--trial-run', help='Generate a single example program and exit',
-            action='store_true', default=False
-        )
-        parser.add_argument(
-            '--simulation', help="Don't actually execute any operations",
-            action='store_true', default=self.simulation
-        )
-        parser.add_argument(
-            '--verbose',
-            help="Don't suppress errors during test case generation",
-            action='store_true', default=self.verbose
-        )
-        parser.add_argument(
-            '--fork', help='Run tests in a subprocess',
-            action='store_true', default=self.fork
-        )
-        parser.add_argument(
-            '-p', '--program-length',
-            type=int, default=self.prog_length,
-            help='Size of programs to generate',
-        )
-        parser.add_argument(
-            '-i', '--iterations',
-            type=int, default=self.n_iters,
-            help='Number of iterations to run',
-        )
-
-        results = parser.parse_args(args)
-        self.prog_length = results.program_length
-        self.simulation = results.simulation
-        self.fork = results.fork
-        self.verbose = results.verbose
-        if results.trial_run:
-            self.trial_run()
-        else:
-            self.n_iters = results.iterations
-            self.run()
 
     def print_execution_log(self, context):
         for step in context.log:
@@ -115,18 +70,6 @@ class TestMachine(object):
             self.print_execution_log(context)
 
     def print_program_results(self, program):
-        if self.fork:
-            pid = os.fork()
-            if pid:
-                os.waitpid(pid, 0)
-                return
-            else:
-                self.fork = False
-                try:
-                    self.print_program_results(program)
-                finally:
-                    os._exit(0)
-
         context = RunContext(simulation=True)
         try:
             context.run_program(program)
@@ -178,24 +121,11 @@ class TestMachine(object):
         return results
 
     def program_fails(self, program):
-        if self.fork:
-            pid = os.fork()
-            if pid:
-                pid, status = os.waitpid(pid, 0)
-                return status != 0
-            else:
-                try:
-                    self.run_program(program)
-                except:
-                    self.maybe_print_exc()
-                    os._exit(1)
-                os._exit(0)
-        else:
-            try:
-                self.run_program(program)
-                return False
-            except Exception:
-                return True
+        try:
+            self.run_program(program)
+            return False
+        except Exception:
+            return True
 
     def find_failing_initial_segment(self, program):
         low = 0

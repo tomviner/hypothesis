@@ -13,31 +13,21 @@
 from __future__ import division, print_function, unicode_literals
 
 import pytest
-from tests.testmachineexamples import exiter, floats, closeable, \
+from tests.testmachineexamples import floats, closeable, \
     nonuniquelists, commutativeints, unbalancedtrees
 
 
-@pytest.mark.parametrize(('example', 'fork'), [
-    (ex, fork)
-    for ex in [floats, nonuniquelists, unbalancedtrees]
-    for fork in (False, True)
-] + [(exiter, True)])
-def test_all_examples(example, fork):
+@pytest.mark.parametrize('example', [floats, nonuniquelists, unbalancedtrees])
+def test_all_examples(example):
     machine = example.machine
     machine.prog_length = 100
     machine.good_enough = 5
-    machine.fork = fork
     results = machine.run()
     assert results is not None
     assert len(results) > 0
 
 
-@pytest.mark.parametrize(('example', 'fork'), [
-    (ex, fork)
-    for ex in [commutativeints, closeable]
-    for fork in (False, True)
-])
-def test_positive_examples(example, fork):
+@pytest.mark.parametrize('example', [commutativeints, closeable])
+def test_positive_examples(example):
     machine = example.machine
-    machine.fork = fork
     assert machine.run() is None
