@@ -146,11 +146,12 @@ class SearchStrategy(object):
         raise NotImplementedError(
             '%s.custom_copy()' % (self.__class__.__name__))
 
-    def draw_and_produce(self, random):
-        return self.produce(random, self.parameter.draw(random))
+    def draw_and_produce(self, context):
+        return self.produce(
+            context.random, self.parameter.draw(context.random))
 
     @abstractmethod
-    def produce(self, random, parameter_value):
+    def generate(self, context, parameter_value):
         """Given a random number generator and a value drawn from
         self.parameter, produce a value matching this search strategy's
         descriptor."""
@@ -267,7 +268,16 @@ class SearchStrategy(object):
         return one_of_strategies((self, other))
 
 
-class IntStrategy(SearchStrategy):
+class SimpleSearchStrategy(SearchStrategy):
+    def generate(self, context, parameter_value):
+        return self.produce(context.random)
+
+    @abstractmethod
+    def produce(self, random, pv):
+        pass
+
+
+class IntStrategy(SimpleSearchStrategy):
 
     """A generic strategy for integer types that provides the basic methods
     other than produce.
@@ -332,7 +342,7 @@ class RandomGeometricIntStrategy(IntStrategy):
         return value
 
 
-class BoundedIntStrategy(SearchStrategy):
+class BoundedIntStrategy(SimpleSearchStrategy):
 
     """A strategy for providing integers in some interval with inclusive
     endpoints."""
@@ -375,7 +385,7 @@ class BoundedIntStrategy(SearchStrategy):
         )
 
 
-class FloatStrategy(SearchStrategy):
+class FloatStrategy(SimpleSearchStrategy):
 
     """Generic superclass for strategies which produce floats."""
     descriptor = float
@@ -494,7 +504,7 @@ class SmallFloats(FloatStrategy):
         return base
 
 
-class FixedBoundedFloatStrategy(SearchStrategy):
+class FixedBoundedFloatStrategy(SimpleSearchStrategy):
 
     """A strategy for floats distributed between two endpoints.
 
@@ -581,7 +591,7 @@ class ExponentialFloatStrategy(FloatStrategy):
         return pv.zero_point + value
 
 
-class BoolStrategy(SearchStrategy):
+class BoolStrategy(SimpleSearchStrategy):
 
     """A strategy that produces Booleans with a Bernoulli conditional
     distribution."""
@@ -595,7 +605,7 @@ class BoolStrategy(SearchStrategy):
         return dist.biased_coin(random, p)
 
 
-class TupleStrategy(SearchStrategy):
+class TupleStrategy(SimpleSearchStrategy):
 
     """A strategy responsible for fixed length tuples based on heterogenous
     strategies for each of their elements.
@@ -699,7 +709,7 @@ def _unique(xs):
     return result
 
 
-class ListStrategy(SearchStrategy):
+class ListStrategy(SimpleSearchStrategy):
 
     """A strategy for lists which takes an intended average length and a
     strategy for each of its element types and generates lists containing any
@@ -775,7 +785,7 @@ class ListStrategy(SearchStrategy):
         )
 
 
-class MappedSearchStrategy(SearchStrategy):
+class MappedSearchStrategy(SimpleSearchStrategy):
 
     """A strategy which is defined purely by conversion to and from another
     strategy.
@@ -824,7 +834,7 @@ class MappedSearchStrategy(SearchStrategy):
             yield self.pack(y)
 
 
-class ComplexStrategy(SearchStrategy):
+class ComplexStrategy(SimpleSearchStrategy):
 
     """A strategy over complex numbers, with real and imaginary values
     distributed according to some provided strategy for floating point
@@ -900,7 +910,7 @@ class FrozenSetStrategy(MappedSearchStrategy):
         return list(x)
 
 
-class OneCharStringStrategy(SearchStrategy):
+class OneCharStringStrategy(SimpleSearchStrategy):
 
     """A strategy which generates single character strings of text type."""
     descriptor = text_type
@@ -982,7 +992,7 @@ class BinaryStringStrategy(MappedSearchStrategy):
         return isinstance(value, binary_type)
 
 
-class FixedKeysDictStrategy(SearchStrategy):
+class FixedKeysDictStrategy(SimpleSearchStrategy):
 
     """A strategy which produces dicts with a fixed set of keys, given a
     strategy for each of their equivalent values.
@@ -1051,7 +1061,7 @@ class FixedKeysDictStrategy(SearchStrategy):
         return True
 
 
-class OneOfStrategy(SearchStrategy):
+class OneOfStrategy(SimpleSearchStrategy):
 
     """Implements a union of strategies. Given a number of strategies this
     generates values which could have come from any of them.
@@ -1140,7 +1150,7 @@ class OneOfStrategy(SearchStrategy):
                         yield y
 
 
-class JustStrategy(SearchStrategy):
+class JustStrategy(SimpleSearchStrategy):
 
     """
     A strategy which simply returns a single fixed value with probability 1.
@@ -1175,7 +1185,7 @@ class JustStrategy(SearchStrategy):
         return actually_equal(self.descriptor.value, value)
 
 
-class RandomStrategy(SearchStrategy):
+class RandomStrategy(SimpleSearchStrategy):
 
     """A strategy which produces Random objects.
 
@@ -1194,7 +1204,7 @@ class RandomStrategy(SearchStrategy):
         return isinstance(value, RandomWithSeed)
 
 
-class SampledFromStrategy(SearchStrategy):
+class SampledFromStrategy(SimpleSearchStrategy):
 
     """A strategy which samples from a set of elements. This is essentially
     equivalent to using a OneOfStrategy over Just strategies but may be more
@@ -1238,7 +1248,7 @@ class NastyFloats(SampledFromStrategy):
         )
 
 
-class ExampleAugmentedStrategy(SearchStrategy):
+class ExampleAugmentedStrategy(SimpleSearchStrategy):
 
     def __init__(self, main_strategy, examples):
         assert examples

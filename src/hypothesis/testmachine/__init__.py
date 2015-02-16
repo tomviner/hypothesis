@@ -10,7 +10,6 @@
 
 # END HEADER
 
-from .testmachine import TestMachine
-from .context import consume
+from .testmachine import TestMachine, produces, ValidationError
 
-__all__ = ['TestMachine', 'consume']
+__all__ = ['TestMachine', 'produces', 'ValidationError']
