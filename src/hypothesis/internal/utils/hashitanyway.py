@@ -80,3 +80,37 @@ class HashItAnyway(object):
 
     def __repr__(self):
         return 'HashItAnyway(%s)' % repr(self.wrapped)
+
+
+class EverythingDict(object):
+    def __init__(self, data=None):
+        self.data = {}
+        for k, v in data or ():
+            self[k] = v
+
+    def __getitem__(self, key):
+        return self.data[HashItAnyway(key)]
+
+    def __setitem__(self, key, value):
+        self.data[HashItAnyway(key)] = value
+
+    def __contains__(self, key):
+        return HashItAnyway(key) in self.data
+
+    def __iter__(self):
+        for k in self.data:
+            yield k.wrapped
+
+    def setdefault(self, key, value):
+        return self.data.setdefault(HashItAnyway(key), value)
+
+    def keys(self):
+        for k in self.data:
+            yield k.wrapped
+
+    def values(self):
+        return self.data.values()
+
+    def items(self):
+        for k, v in self.data.items():
+            yield k.wrapped, v

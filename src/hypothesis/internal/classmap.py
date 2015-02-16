@@ -38,3 +38,11 @@ class ClassMap(object):
 
     def __setitem__(self, key, value):
         self.data[key] = value
+
+    def __contains__(self, key):
+        if key in self.data:
+            return True
+        for c in type.mro(key):
+            if c in self.data:
+                return True
+        return False

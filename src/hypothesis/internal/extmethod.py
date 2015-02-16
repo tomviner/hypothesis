@@ -36,6 +36,9 @@ class ExtMethod(object):
     def typekey(self, arg):
         return type(arg)
 
+    def is_defined(self, dispatch_arg):
+        return self.typekey(dispatch_arg) in self.mapping
+
     def __call__(self, dispatch_arg, *args, **kwargs):
         typekey = self.typekey(dispatch_arg)
         try:
@@ -45,3 +48,8 @@ class ExtMethod(object):
                 'No implementation available for %s' % (typekey.__name__,)
             )
         return f(dispatch_arg, *args, **kwargs)
+
+
+class StaticExtMethod(ExtMethod):
+    def typekey(self, arg):
+        return arg
