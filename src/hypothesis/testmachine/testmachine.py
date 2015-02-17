@@ -14,64 +14,157 @@ from __future__ import division, print_function, unicode_literals
 
 from unittest import TestCase
 from hypothesis.internal.utils.hashitanyway import EverythingDict
-from hypothesis.conventions import UniqueIdentifier
 from hypothesis.internal.utils.fixers import nice_string
-from hypothesis.testmachine.languages import LanguageTable
+from hypothesis.testmachine.languages import LanguageTable, EmptyLanguage
 from hypothesis.internal.specmapper import MissingSpecification
+from functools import reduce
+from operator import or_
+
+
+class Label(object):
+    def __init__(self, description, varname):
+        self.description = description
+        self.varname = varname
+
+    def __repr__(self):
+        return "Label(%s, %s)" % (
+            nice_string(self.description), nice_string(self.varname)
+        )
 
 
 class VarStack(object):
-    pass
+    def __init__(self, description):
+        self.description = description
+        self.next_label = 1
+        self.stack = []
 
+    def __len__(self):
+        return len(self.stack)
 
-NoLanguage = UniqueIdentifier('NoLanguage')
+    def push(self, value):
+        self.stack.append((
+            value, Label(self.description, self.next_label)
+        ))
+        self.next_label += 1
+
+    def read(self, index):
+        if index >= len(self.stack):
+            raise IndexError(
+                "Index %d out of range for stack height %d" % (
+                    index, len(self.stack)
+                ))
+        return self.stack[-1 - index]
 
 
 class ValidationError(Exception):
     pass
 
 
+class RunContext(object):
+    def __init__(self, varstacks):
+        self.varstacks = EverythingDict()
+        for v in varstacks:
+            self.varstacks[v] = VarStack(v)
+
+    def height(self, description):
+        return len(self.varstacks[description])
+
+    def push(self, description, value):
+        self.varstacks[description].push(value)
+
+    def read(self, argspec):
+        heights = EverythingDict()
+        values = []
+        labels = []
+        for v in argspec:
+            stack = self.varstacks[v]
+            last_height = heights.setdefault(v, -1)
+            height = last_height + 1
+            heights[v] = height
+            value, label = stack.read(height)
+            values.append(value)
+            labels.append(label)
+        return tuple(values), tuple(labels)
+
+    def could_read(self, argspec):
+        try:
+            self.read(argspec)
+            return True
+        except IndexError:
+            return False
+
+
 class MachineDefinition(object):
     def __init__(self, language_table=None):
         self.language_table = language_table or LanguageTable.default()
-        self.varstacks = EverythingDict()
         self.targetting_languages = EverythingDict()
         self.extra_languages = []
 
     def install_varstack(self, description):
-        if description not in self.varstacks:
-            self.varstacks[description] = VarStack()
+        if description not in self.targetting_languages:
             try:
                 language = self.language_table.specification_for(description)
             except MissingSpecification:
-                language = NoLanguage
+                self.targetting_languages[description] = EmptyLanguage()
+                return
 
-            if language != NoLanguage:
-                self.targetting_languages[description] = language
-                language.install(self)
-        return self.varstacks[description]
+            self.targetting_languages[description] = language
+            language.install(self)
 
     def varstack_names(self):
-        for k in self.varstacks:
+        for k in self.targetting_languages:
             yield k
 
+    def new_run_context(self):
+        return RunContext(self.varstack_names())
+
+    def build_language(self):
+        self.validate()
+        empty = EmptyLanguage()
+        result = reduce(
+            or_, self.targetting_languages.values(), empty
+        ) | reduce(
+            or_, self.extra_languages, empty
+        )
+        assert not result.empty()
+        return result
+
+    def build_program(self, random):
+        language = self.build_language()
+        context = self.new_run_context()
+        parameter = language.draw_parameter(random)
+        while True:
+            op = language.draw_operation(
+                random=random, runcontext=context, parameter_value=parameter
+            )
+            op.simulate(context)
+            yield op
+
+    def run_program(self, program):
+        context = self.new_run_context()
+        for p in program:
+            p.run(context)
+        return context
+
     def language(self, description):
-        return self.targetting_languages.setdefault(description, NoLanguage)
+        return self.targetting_languages.setdefault(
+            description, EmptyLanguage())
 
     def add_targetting_language(self, description, language):
-        if self.language(description) == NoLanguage:
-            self.targetting_languages[description] = language
-        else:
-            self.targetting_languages[description] |= language
+        self.targetting_languages[description] = (
+            self.language(description) | language)
 
     def add_language(self, language):
         self.extra_languages.append(language)
 
     def validate(self):
+        if not (self.targetting_languages or self.extra_languages):
+            raise ValidationError("Empty machine")
+
         missing_varstacks = [
             k
-            for k in self.varstacks
-            if self.language(k) == NoLanguage
+            for k in self.targetting_languages
+            if self.language(k).empty()
         ]
 
         if missing_varstacks:

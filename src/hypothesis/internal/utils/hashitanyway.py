@@ -97,6 +97,12 @@ class EverythingDict(object):
     def __contains__(self, key):
         return HashItAnyway(key) in self.data
 
+    def __bool__(self):
+        return bool(self.data)
+
+    def __nonzero__(self):
+        return bool(self)
+
     def __iter__(self):
         for k in self.data:
             yield k.wrapped

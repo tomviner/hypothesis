@@ -6,7 +6,7 @@ import pytest
 
 def test_can_define_non_hashable_varstack_names():
     md = MachineDefinition()
-    assert md.install_varstack([int]) is not None
+    md.install_varstack([int])
 
 
 def test_caches_varstacks():
@@ -36,5 +36,11 @@ def test_is_not_valid_for_unknown_types_automatically():
         pass
     md = MachineDefinition()
     md.install_varstack(Unknown)
+    with pytest.raises(ValidationError):
+        md.validate()
+
+
+def test_an_empty_definition_is_invalid():
+    md = MachineDefinition()
     with pytest.raises(ValidationError):
         md.validate()
