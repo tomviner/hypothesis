@@ -135,5 +135,7 @@ def given(*generator_arguments, **generator_kwargs):
         wrapped_test.__name__ = test.__name__
         wrapped_test.__doc__ = test.__doc__
         wrapped_test.verifier = verifier
+        wrapped_test.hypothesis_given = (generator_arguments, generator_kwargs)
+        wrapped_test.is_hypothesis = True
         return wrapped_test
     return run_test_with_generator

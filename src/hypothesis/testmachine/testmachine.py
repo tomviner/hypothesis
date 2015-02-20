@@ -15,20 +15,25 @@ from __future__ import division, print_function, unicode_literals
 from unittest import TestCase
 from hypothesis.internal.utils.hashitanyway import EverythingDict
 from hypothesis.internal.utils.fixers import nice_string
-from hypothesis.testmachine.languages import LanguageTable, EmptyLanguage
+from hypothesis.testmachine.languages import (
+    LanguageTable, EmptyLanguage, SingleFunctionLanguage)
 from hypothesis.internal.specmapper import MissingSpecification
 from functools import reduce
 from operator import or_
+from inspect import getmembers
+from hypothesis.conventions import not_set
 
 
-class Label(object):
-    def __init__(self, description, varname):
+class LabelledValue(object):
+    def __init__(self, description, varname, value):
         self.description = description
         self.varname = varname
+        self.value = value
 
     def __repr__(self):
-        return "Label(%s, %s)" % (
-            nice_string(self.description), nice_string(self.varname)
+        return "LabelledValue(%s, %s, %s)" % (
+            nice_string(self.description), nice_string(self.varname),
+            nice_string(self.value),
         )
 
 
@@ -42,8 +47,8 @@ class VarStack(object):
         return len(self.stack)
 
     def push(self, value):
-        self.stack.append((
-            value, Label(self.description, self.next_label)
+        self.stack.append(LabelledValue(
+            self.description, self.next_label, value
         ))
         self.next_label += 1
 
@@ -74,17 +79,21 @@ class RunContext(object):
 
     def read(self, argspec):
         heights = EverythingDict()
-        values = []
-        labels = []
-        for v in argspec:
+
+        def read_single(v):
             stack = self.varstacks[v]
             last_height = heights.setdefault(v, -1)
             height = last_height + 1
             heights[v] = height
-            value, label = stack.read(height)
-            values.append(value)
-            labels.append(label)
-        return tuple(values), tuple(labels)
+            return stack.read(height)
+
+        args = []
+        kwargs = {}
+        for v in argspec.args:
+            args.append(read_single(v))
+        for k, v in argspec.kwargs.items():
+            kwargs[k] = read_single(v)
+        return tuple(args), kwargs
 
     def could_read(self, argspec):
         try:
@@ -180,15 +189,35 @@ class MachineDefinition(object):
                     ))
 
 
-def produces(*args, **kwargs):
-    return lambda f: f
+def produces(target):
+    def accept(f):
+        f.hypothesis_produces = target
+        f.is_hypothesis = True
+        return f
+    return accept
 
 
 class TestMachine(TestCase):
-    @classmethod
+    def build_machine_definition(self):
+        md = MachineDefinition()
+        for name, value in getmembers(self):
+            unbound = unbind_function(value)
+            target = getattr(unbound, 'hypothesis_produces', not_set)
+            given = getattr(unbound, 'hypothesis_given', ((), ()))
+            if hasattr(value, 'hypothesis_given'):
+                md.install_varstack(value.hypothesis_given[0])
+                md.install_varstack(value.hypothesis_given[1])
+                language = SingleFunctionLanguage(
+                    target=target,
+                    function=apply,
+                )
+                md.add_targetting_language()
+                    
+        return md
+
     def validate(self):
-        pass
+        self.build_machine_definition().validate()
 
     @classmethod
-    def add_rule(self):
+    def add_rule(self, rule):
         pass

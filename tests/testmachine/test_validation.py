@@ -8,7 +8,7 @@ def test_simple_test_passes_validation():
         @given(int, int)
         def test_commutative_add(self, x, y):
             assert x + y == y + x
-    CommutativeInts.validate()
+    CommutativeInts().validate()
 
 
 def test_fails_validation_if_no_production_rules():
@@ -21,7 +21,7 @@ def test_fails_validation_if_no_production_rules():
             pass
 
     with pytest.raises(ValidationError):
-        TestFoos.validate()
+        TestFoos().validate()
 
 
 def test_passes_validation_if_can_produce_indirectly():
@@ -38,7 +38,7 @@ def test_passes_validation_if_can_produce_indirectly():
         def test_foo_is_foo(self, foo):
             pass
 
-    TestFoos.validate()
+    TestFoos().validate()
 
 
 def test_passes_validation_if_relevant_rules_added_explicitly():
@@ -58,7 +58,7 @@ def test_passes_validation_if_relevant_rules_added_explicitly():
 
     TestFoos.add_rule(int_to_foo)
 
-    TestFoos.validate()
+    TestFoos().validate()
 
 
 def test_passes_validation_if_produces_from_several():
@@ -75,7 +75,7 @@ def test_passes_validation_if_produces_from_several():
         def test_foo_is_foo(self, foo):
             pass
 
-    TestFoos.validate()
+    TestFoos().validate()
 
 
 def test_can_put_given_and_produces_in_other_order():
@@ -92,4 +92,4 @@ def test_can_put_given_and_produces_in_other_order():
         def test_foo_is_foo(self, foo):
             pass
 
-    TestFoos.validate()
+    TestFoos().validate()
