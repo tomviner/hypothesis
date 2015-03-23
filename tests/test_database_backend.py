@@ -15,7 +15,7 @@ from __future__ import division, print_function, absolute_import, \
 
 from hypothesis import given
 from tests.common import small_verifier
-from hypothesis.internal.compat import text_type
+from hypothesis.internal.compat import hrange, text_type
 from hypothesis.database.backend import SQLiteBackend
 
 
@@ -47,3 +47,18 @@ def test_does_not_commit_in_error_state():
         pass
 
     assert backend.fetch('a') == []
+
+
+def test_can_close_database_with_active_cursor():
+    backend = SQLiteBackend(':memory:')
+    backend.create_db_if_needed()
+    cursors = []
+    for i in hrange(10):
+        cursor_manager = backend.cursor()
+        cursor = cursor_manager.__enter__()
+        cursor.execute("""
+            insert into hypothesis_data_mapping(key, value)
+            values(?, "b")
+        """, (str(i),))
+        cursors.append(cursor_manager)
+    backend.close()
