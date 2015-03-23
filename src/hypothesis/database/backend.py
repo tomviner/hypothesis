@@ -18,6 +18,8 @@ from abc import abstractmethod
 from contextlib import contextmanager
 
 from hypothesis.internal.compat import text_type
+from hypothesis.utils.idkey import IdKey
+import warnings
 
 
 class Backend(object):
@@ -62,6 +64,7 @@ class SQLiteBackend(Backend):
         self.path = path
         self.db_created = False
         self.__connection = None
+        self.cursors = {}
 
     def connection(self):
         if self.__connection is None:
@@ -71,7 +74,17 @@ class SQLiteBackend(Backend):
     def close(self):
         if self.__connection is not None:
             c = self.__connection
+            cursors = self.cursors
+            self.cursors = {}
             self.__connection = None
+            if cursors:
+                warnings.warn(
+                    "%d unclosed cursors to database" % (len(cursors),))
+            for cursor in cursors.values():
+                try:
+                    cursor.close()
+                except:
+                    pass
             c.close()
 
     def __repr__(self):
@@ -87,11 +100,14 @@ class SQLiteBackend(Backend):
     def cursor(self):
         conn = self.connection()
         cursor = conn.cursor()
+        key = IdKey(cursor)
+        self.cursors[key] = cursor
         try:
             try:
                 yield cursor
             finally:
                 cursor.close()
+                del self.cursors[key]
         except:
             conn.rollback()
             raise
