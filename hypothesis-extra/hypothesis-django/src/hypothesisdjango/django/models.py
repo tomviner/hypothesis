@@ -15,7 +15,7 @@ from __future__ import division, print_function, absolute_import, \
 
 import django.db.models as dm
 import hypothesis.extra.fakefactory as ff
-from hypothesis.specifiers import one_of
+from hypothesis.specifiers import one_of, sampled_from, positive_integers
 from hypothesis.extra.datetime import timezone_aware_datetime
 from hypothesis.internal.compat import text_type, binary_type
 from hypothesis.searchstrategy.strategies import MappedSearchStrategy, \
@@ -31,6 +31,8 @@ FIELD_MAPPINGS = {
     dm.FloatField: float,
     dm.IntegerField: int,
     dm.NullBooleanField: one_of((None, bool)),
+    dm.PositiveIntegerField: positive_integers,
+    dm.PositiveSmallIntegerField: positive_integers,
 }
 
 
@@ -45,6 +47,13 @@ def model_to_base_specifier(model):
             continue
         if isinstance(f, dm.ForeignKey):
             mapped = f.related.parent_model
+        elif getattr(f, 'choices', None):
+            options = [
+                c for c, _ in f.get_flatchoices()
+            ]
+            if not f.blank:
+                options.remove('')
+            mapped = sampled_from(options)
         else:
             try:
                 mapped = FIELD_MAPPINGS[type(f)]

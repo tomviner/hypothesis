@@ -16,10 +16,23 @@ from __future__ import division, print_function, absolute_import, \
 from hypothesis.extra.django import TestCase
 from hypothesis.extra.django.models import ModelNotSupported
 from hypothesis import given
-from toystore.models import Company, Customer, CouldBeCharming, Charming, Shop
+from toystore.models import Company, Customer, CouldBeCharming, Charming, \
+    Shop, ConstrainedChoices
+
+from django.contrib.auth.models import User
 
 
 class TestGetsBasicModels(TestCase):
+
+    @given(User)
+    def test_can_user(self, user):
+        assert isinstance(user, User)
+
+    @given(ConstrainedChoices)
+    def test_genre(self, choices):
+        self.assertIn(choices.genre, ('', 'c', 'w'))
+        self.assertIn(choices.stuff, ('so', 'wat'))
+
     @given(Company)
     def test_is_company(self, company):
         self.assertIsInstance(company, Company)
@@ -30,6 +43,7 @@ class TestGetsBasicModels(TestCase):
         self.assertIsInstance(customer, Customer)
         self.assertIsNotNone(customer.pk)
         self.assertIsNotNone(customer.email)
+        assert customer.age >= 0
 
     @given(Shop)
     def test_can_create_dependent_models(self, shop):

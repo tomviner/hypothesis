@@ -26,15 +26,16 @@ class Shop(models.Model):
 
 
 class CharmField(models.Field):
+
     def db_type(self, connection):
-        return "char(1)"
+        return 'char(1)'
 
 
 class Customer(models.Model):
     name = models.CharField(max_length=100, unique=True)
     email = models.EmailField(max_length=100, unique=True)
     gender = models.CharField(max_length=50, null=True)
-    age = models.IntegerField()
+    age = models.PositiveIntegerField()
     birthday = models.DateTimeField()
 
 
@@ -44,3 +45,17 @@ class Charming(models.Model):
 
 class CouldBeCharming(models.Model):
     charm = CharmField(null=True)
+
+
+class ConstrainedChoices(models.Model):
+    MUSIC_CHOICE = (('c', 'Country'), ('w', 'Western'))
+
+    WEIRD_CHOICES = (
+        ('Useful', (('wat', 'Ever'),)),
+        ('Not useful', (('so', 'there'),)),
+    )
+
+    genre = models.CharField(choices=MUSIC_CHOICE, max_length=2)
+    stuff = models.CharField(choices=WEIRD_CHOICES, max_length=11, blank=False)
+
+    spooniness = models.PositiveSmallIntegerField()
