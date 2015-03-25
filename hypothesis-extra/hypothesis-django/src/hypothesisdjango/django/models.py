@@ -43,17 +43,20 @@ def model_to_base_specifier(model):
     for f in model._meta.concrete_fields:
         if isinstance(f, dm.AutoField):
             continue
-        try:
-            mapped = FIELD_MAPPINGS[type(f)]
-        except KeyError:
-            if f.null:
-                continue
-            else:
-                raise ModelNotSupported((
-                    'No mapping defined for field type %s and %s is not '
-                    'nullable') % (
-                    type(f).__name__, f.name
-                ))
+        if isinstance(f, dm.ForeignKey):
+            mapped = f.related.parent_model
+        else:
+            try:
+                mapped = FIELD_MAPPINGS[type(f)]
+            except KeyError:
+                if f.null:
+                    continue
+                else:
+                    raise ModelNotSupported((
+                        'No mapping defined for field type %s and %s is not '
+                        'nullable') % (
+                        type(f).__name__, f.name
+                    ))
         if f.null:
             mapped = one_of((None, mapped))
         result[f.name] = mapped

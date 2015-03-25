@@ -16,7 +16,7 @@ from __future__ import division, print_function, absolute_import, \
 from hypothesis.extra.django import TestCase
 from hypothesis.extra.django.models import ModelNotSupported
 from hypothesis import given
-from toystore.models import Company, Customer, CouldBeCharming, Charming
+from toystore.models import Company, Customer, CouldBeCharming, Charming, Shop
 
 
 class TestGetsBasicModels(TestCase):
@@ -30,6 +30,11 @@ class TestGetsBasicModels(TestCase):
         self.assertIsInstance(customer, Customer)
         self.assertIsNotNone(customer.pk)
         self.assertIsNotNone(customer.email)
+
+    @given(Shop)
+    def test_can_create_dependent_models(self, shop):
+        self.assertIsInstance(shop, Shop)
+        self.assertIsInstance(shop.company, Company)
 
     @given(CouldBeCharming)
     def test_is_not_charming(self, not_charming):

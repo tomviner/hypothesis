@@ -20,6 +20,11 @@ class Company(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
 
+class Shop(models.Model):
+    name = models.CharField(max_length=100)
+    company = models.ForeignKey(Company)
+
+
 class CharmField(models.Field):
     def db_type(self, connection):
         return "char(1)"
