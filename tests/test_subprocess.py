@@ -13,6 +13,14 @@ def test_exact_details_irrelevant(s):
     pass
 
 
+def test_sys_path():
+    assert all(isinstance(s, str) for s in sys.path)
+
+
+def test_pathsep():
+    assert isinstance(os.pathsep, str)
+
+
 def test_subprocess():
     """
     Check that Hypothesis's path changes haven't broken the ability to us
