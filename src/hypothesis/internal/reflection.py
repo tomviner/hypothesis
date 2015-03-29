@@ -298,13 +298,14 @@ def add_directory_to_path(d):
 eval_cache = {}
 
 
-def source_exec_as_module(source):
+def source_exec_as_module(source, d=None):
     try:
         return eval_cache[source]
     except KeyError:
         pass
 
-    d = eval_directory()
+    if d is None:
+        d = eval_directory()
     add_directory_to_path(d)
     # Try writing the source to a series of files. If we get an import error
     # importing after writing we're experiencing a race condition in the

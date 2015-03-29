@@ -22,6 +22,17 @@ from hypothesis.internal.reflection import arg_string, copy_argspec, \
     unbind_method, function_digest, source_exec_as_module, \
     convert_keyword_arguments, convert_positional_arguments, \
     get_pretty_function_description
+from hypothesis.settings import storage_directory
+import os
+
+
+def test_snowmen_are_great():
+    snowmen = storage_directory("☃")
+    m = source_exec_as_module(
+        "snowmen = 'great'\n", d=snowmen
+    )
+    assert "☃" in os.pathsep.join(sys.path)
+    assert m.snowmen == 'great'
 
 
 def do_conversion_test(f, args, kwargs):
