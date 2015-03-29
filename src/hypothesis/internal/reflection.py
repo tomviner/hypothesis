@@ -28,7 +28,7 @@ from functools import wraps
 
 from hypothesis.settings import storage_directory
 from hypothesis.internal.compat import ARG_NAME_ATTRIBUTE, hrange, \
-    text_type, convert_to_path
+    text_type
 
 
 def function_digest(function):
@@ -291,7 +291,11 @@ def eval_directory():
 
 
 def add_directory_to_path(d):
-    d = convert_to_path(d)
+    if not isinstance(d, str):  # pragma: no cover
+        try:
+            d = str(d)
+        except UnicodeEncodeError:
+            pass
     if d not in sys.path:
         sys.path.insert(0, d)
 

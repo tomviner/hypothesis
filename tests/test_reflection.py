@@ -21,25 +21,9 @@ import pytest
 from hypothesis.internal.reflection import arg_string, copy_argspec, \
     unbind_method, function_digest, source_exec_as_module, \
     convert_keyword_arguments, convert_positional_arguments, \
-    get_pretty_function_description
+    get_pretty_function_description, add_directory_to_path
 from hypothesis.settings import storage_directory
-import os
-from hypothesis.internal.compat import binary_type, FILE_SYSTEM_ENCODING
-
-
-def test_snowmen_are_great():
-    snowman = "\u2603"
-    snowmen = storage_directory(snowman)
-    m = source_exec_as_module(
-        "snowmen = 'great'\n", d=snowmen
-    )
-    assert all(isinstance(s, str) for s in sys.path)
-    assert snowman in os.pathsep.join(
-        s.decode(FILE_SYSTEM_ENCODING)
-        if isinstance(s, binary_type) else s
-        for s in sys.path
-    )
-    assert m.snowmen == 'great'
+from hypothesis.internal.compat import PY3, WINDOWS
 
 
 def do_conversion_test(f, args, kwargs):
@@ -450,6 +434,32 @@ def test_passes_args_as_keyword():
     f = copy_argspec(
         'foo', inspect.getargspec(has_two_args))(universal_acceptor)
     assert f(1, 2) == ((), {'hello': 1, 'world': 2})
+
+
+@pytest.mark.skipif(
+    (not PY3) and WINDOWS,
+    reason="Unicode, python 2.7 and Windows: Nope"
+)
+def test_can_eval_in_non_ascii_dir():
+    assert source_exec_as_module(
+        "hello = 'world'",
+        d=storage_directory(u"\u2603")
+    ).hello == 'world'
+
+
+@pytest.mark.skipif(
+    PY3, reason="This tests silly python 2 behaviour"
+)
+def test_add_directory_to_path_converts_to_ascii_if_possible():
+    old_path = list(sys.path)
+    sys.path = [s for s in old_path if isinstance(s, str)]
+    try:
+        add_directory_to_path(storage_directory("kittens"))
+        assert all(isinstance(x, str) for x in sys.path)
+        add_directory_to_path(storage_directory(u"\u2603"))
+        assert any(not isinstance(x, str) for x in sys.path)
+    finally:
+        sys.path = old_path
 
 
 DEFINE_FOO_FUNCTION = """

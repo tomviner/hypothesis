@@ -17,14 +17,8 @@ from __future__ import division, print_function, absolute_import, \
 import sys
 import platform
 
-WINDOWS = platform.system() == 'Windows'
-
-if WINDOWS:
-    FILE_SYSTEM_ENCODING = 'UTF-16'
-else:
-    FILE_SYSTEM_ENCODING = 'UTF-8'
-
 PY3 = sys.version_info[0] == 3
+WINDOWS = platform.system() == "Windows"
 
 if PY3:
     text_type = str
@@ -33,13 +27,6 @@ if PY3:
     ARG_NAME_ATTRIBUTE = 'arg'
     integer_types = (int,)
     hunichr = chr
-
-    def convert_to_path(s):
-        if isinstance(s, bytes):
-            return s.decode(FILE_SYSTEM_ENCODING)
-        else:
-            assert isinstance(s, str)
-            return s
 else:
     text_type = unicode
     binary_type = str
@@ -47,10 +34,3 @@ else:
     ARG_NAME_ATTRIBUTE = 'id'
     integer_types = (int, long)
     hunichr = unichr
-
-    def convert_to_path(s):
-        if isinstance(s, unicode):
-            return s.encode(FILE_SYSTEM_ENCODING)
-        else:
-            assert isinstance(s, str)
-            return s
