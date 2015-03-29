@@ -24,8 +24,7 @@ from hypothesis.internal.reflection import arg_string, copy_argspec, \
     get_pretty_function_description
 from hypothesis.settings import storage_directory
 import os
-from hypothesis.internal.compat import binary_type
-import locale
+from hypothesis.internal.compat import binary_type, FILE_SYSTEM_ENCODING
 
 
 def test_snowmen_are_great():
@@ -36,7 +35,7 @@ def test_snowmen_are_great():
     )
     assert all(isinstance(s, str) for s in sys.path)
     assert snowman in os.pathsep.join(
-        s.decode(locale.getpreferredencoding())
+        s.decode(FILE_SYSTEM_ENCODING)
         if isinstance(s, binary_type) else s
         for s in sys.path
     )

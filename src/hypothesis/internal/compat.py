@@ -15,7 +15,14 @@ from __future__ import division, print_function, absolute_import, \
     unicode_literals
 
 import sys
-import locale
+import platform
+
+WINDOWS = platform.system() == 'Windows'
+
+if WINDOWS:
+    FILE_SYSTEM_ENCODING = 'UTF-16'
+else:
+    FILE_SYSTEM_ENCODING = 'UTF-8'
 
 PY3 = sys.version_info[0] == 3
 
@@ -29,7 +36,7 @@ if PY3:
 
     def convert_to_path(s):
         if isinstance(s, bytes):
-            return s.decode(locale.getpreferredencoding())
+            return s.decode(FILE_SYSTEM_ENCODING)
         else:
             assert isinstance(s, str)
             return s
@@ -43,7 +50,7 @@ else:
 
     def convert_to_path(s):
         if isinstance(s, unicode):
-            return s.encode(locale.getpreferredencoding())
+            return s.encode(FILE_SYSTEM_ENCODING)
         else:
             assert isinstance(s, str)
             return s
