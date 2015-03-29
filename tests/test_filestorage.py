@@ -44,8 +44,11 @@ def test_can_set_homedir_and_it_will_exist(tmpdir):
 
 
 def test_will_pick_up_location_from_env(tmpdir):
-    os.environ['HYPOTHESIS_STORAGE_DIRECTORY'] = str(tmpdir)
-    assert fs.hypothesis_home_dir() == str(tmpdir)
+    try:
+        os.environ['HYPOTHESIS_STORAGE_DIRECTORY'] = str(tmpdir)
+        assert fs.hypothesis_home_dir() == str(tmpdir)
+    finally:
+        del os.environ['HYPOTHESIS_STORAGE_DIRECTORY']
 
 
 def test_storage_directories_are_created_automatically(tmpdir):
