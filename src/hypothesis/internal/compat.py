@@ -18,7 +18,7 @@ import sys
 import platform
 
 PY3 = sys.version_info[0] == 3
-WINDOWS = platform.system() == "Windows"
+WINDOWS = platform.system() == 'Windows'
 
 if PY3:
     text_type = str
