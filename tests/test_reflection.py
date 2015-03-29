@@ -24,6 +24,8 @@ from hypothesis.internal.reflection import arg_string, copy_argspec, \
     get_pretty_function_description
 from hypothesis.settings import storage_directory
 import os
+from hypothesis.internal.compat import binary_type
+import locale
 
 
 def test_snowmen_are_great():
@@ -31,7 +33,12 @@ def test_snowmen_are_great():
     m = source_exec_as_module(
         "snowmen = 'great'\n", d=snowmen
     )
-    assert "☃" in os.pathsep.join(sys.path)
+    assert all(isinstance(s, str) for s in sys.path)
+    assert "☃" in os.pathsep.join(
+        s.decode(locale.getpreferredencoding())
+        if isinstance(s, binary_type) else s
+        for s in sys.path
+    )
     assert m.snowmen == 'great'
 
 

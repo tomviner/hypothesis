@@ -15,6 +15,7 @@ from __future__ import division, print_function, absolute_import, \
     unicode_literals
 
 import sys
+import locale
 
 PY3 = sys.version_info[0] == 3
 
@@ -25,6 +26,13 @@ if PY3:
     ARG_NAME_ATTRIBUTE = 'arg'
     integer_types = (int,)
     hunichr = chr
+
+    def convert_to_path(s):
+        if isinstance(s, bytes):
+            return s.decode(locale.getpreferredencoding())
+        else:
+            assert isinstance(s, str)
+            return s
 else:
     text_type = unicode
     binary_type = str
@@ -32,3 +40,10 @@ else:
     ARG_NAME_ATTRIBUTE = 'id'
     integer_types = (int, long)
     hunichr = unichr
+
+    def convert_to_path(s):
+        if isinstance(s, unicode):
+            return s.encode(locale.getpreferredencoding())
+        else:
+            assert isinstance(s, str)
+            return s
