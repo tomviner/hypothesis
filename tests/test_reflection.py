@@ -29,12 +29,13 @@ import locale
 
 
 def test_snowmen_are_great():
-    snowmen = storage_directory("☃")
+    snowman = "\u2603"
+    snowmen = storage_directory(snowman)
     m = source_exec_as_module(
         "snowmen = 'great'\n", d=snowmen
     )
     assert all(isinstance(s, str) for s in sys.path)
-    assert "☃" in os.pathsep.join(
+    assert snowman in os.pathsep.join(
         s.decode(locale.getpreferredencoding())
         if isinstance(s, binary_type) else s
         for s in sys.path
