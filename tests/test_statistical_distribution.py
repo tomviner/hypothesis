@@ -30,7 +30,7 @@ import random
 import pytest
 import hypothesis.specifiers as specifiers
 import hypothesis.internal.reflection as reflection
-from hypothesis.internal.compat import hrange
+from hypothesis.internal.compat import hrange, text_type
 from hypothesis.searchstrategy.strategies import BuildContext, strategy
 
 # We run each individual test at a very high level of significance to the
@@ -297,4 +297,17 @@ test_can_produce_the_same_int_twice = define_test(
 test_non_empty_subset_of_two_is_usually_large = define_test(
     {specifiers.sampled_from((1, 2))}, 0.6,
     lambda t: len(t) == 2
+)
+
+test_can_generate_all_ascii_strings = define_test(
+    text_type, 0.1, lambda t: len(t.encode('ascii', 'ignore')) == len(t)
+)
+
+test_strings_contain_some_ascii_fairly_often = define_test(
+    text_type, 0.5, lambda t: len(t.encode('ascii', 'ignore')) >= 2
+)
+
+test_can_generate_long_non_ascii_strings = define_test(
+    text_type, 0.1, lambda t: not t.encode('ascii', 'ignore'),
+    condition=lambda t: len(t) >= 10
 )

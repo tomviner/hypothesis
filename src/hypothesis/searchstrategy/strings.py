@@ -38,8 +38,22 @@ class OneCharStringStrategy(SearchStrategy):
     def produce_parameter(self, random):
         alphabet_size = 1 + dist.geometric(random, 0.1)
         alphabet = []
+        # Fairly adhoc alphabet selection.
+        # Step 1: Pick a rough average for the codepoint of the alphabet, as
+        # aimed to be a bit over the ascii region on average.
+        # Step 2: Draw a bunch of geometric values with roughly that average.
+        # Step 3: Reject anything that doesn't look right until we have a large
+        # enough alphabet.
+        # This is totally unprincipled but aims to produce a good range of
+        # corner cases.
+        region = 2.0 + dist.geometric(random, 1.0 / 254)
+        p = 1.0 / region
         while len(alphabet) < alphabet_size:
-            char = hunichr(random.randint(0, sys.maxunicode))
+            n = dist.geometric(random, p)
+            # This is basically impossible to hit on most platforms
+            if n > sys.maxunicode:  # pragma: no branch
+                continue  # pragma: no cover
+            char = hunichr(n)
             if unicodedata.category(char) != 'Cs':
                 alphabet.append(char)
         return tuple(alphabet)
