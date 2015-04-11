@@ -203,6 +203,28 @@ def best_satisfying_template(
 
 HypothesisProvided = namedtuple('HypothesisProvided', ('value,'))
 
+Example = namedtuple('Example', ('args', 'kwargs'))
+
+
+def example(*args, **kwargs):
+    """Add an explicit example called with these args and kwargs to the
+    test."""
+    if args and kwargs:
+        raise InvalidArgument(
+            'Cannot mix positional and keyword arguments for examples'
+        )
+    if not (args or kwargs):
+        raise InvalidArgument(
+            'An example must provide at least one argument'
+        )
+
+    def accept(test):
+        if not hasattr(test, 'hypothesis_explicit_examples'):
+            test.hypothesis_explicit_examples = []
+        test.hypothesis_explicit_examples.append(Example(tuple(args), kwargs))
+        return test
+    return accept
+
 
 def given(*generator_arguments, **generator_kwargs):
     """A decorator for turning a test function that accepts arguments into a
@@ -267,9 +289,9 @@ def given(*generator_arguments, **generator_kwargs):
             else:
                 if seen_kwarg is not None:
                     raise InvalidArgument((
-                        "Argument %s comes after keyword %s which has been "
-                        "specified, but does not itself have a "
-                        "specification") % (
+                        'Argument %s comes after keyword %s which has been '
+                        'specified, but does not itself have a '
+                        'specification') % (
                         a, seen_kwarg
                     ))
 
@@ -298,6 +320,22 @@ def given(*generator_arguments, **generator_kwargs):
             else:
                 setup_example = None
                 teardown_example = None
+
+            for example in getattr(
+                wrapped_test, 'hypothesis_explicit_examples', ()
+            ):
+                if example.args:
+                    example_kwargs = dict(zip(
+                        argspec.args[-len(example.args):], example.args
+                    ))
+                else:
+                    example_kwargs = dict(example.kwargs)
+
+                for k, v in kwargs.items():
+                    if not isinstance(v, HypothesisProvided):
+                        example_kwargs[k] = v
+
+                test(*arguments, **example_kwargs)
 
             setup_example = setup_example or (lambda: None)
             teardown_example = teardown_example or (lambda ex: None)
@@ -393,6 +431,9 @@ def given(*generator_arguments, **generator_kwargs):
         wrapped_test.__name__ = test.__name__
         wrapped_test.__doc__ = test.__doc__
         wrapped_test.is_hypothesis_test = True
+        wrapped_test.hypothesis_explicit_examples = getattr(
+            test, 'hypothesis_explicit_examples', []
+        )
         return wrapped_test
     return run_test_with_generator
 
