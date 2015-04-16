@@ -131,7 +131,10 @@ class DataDefinition(object):
                         result.append(r.name)
                 return tuple(result)
 
-        parents = tuple(sorted(getattr(self, n) for n in parents)) + (
+        parents = tuple(sorted(
+            (getattr(self, n) for n in parents),
+            key=lambda x: x.__name__,
+        )) + (
             DataDefinitionType, namedtuple(name, members), DDType)
         setattr(self, name, type(name, parents, {}))
 

@@ -99,3 +99,19 @@ def test_union_types_are_superclasses():
     assert issubclass(data.Split, data.Tree)
     assert not issubclass(data.Split, data.Leaf)
     assert not issubclass(data.Leaf, data.Split)
+
+
+def test_can_be_in_multiple_unions():
+    data = DataDefinition()
+    data.define_union('AB', 'A', 'B')
+    data.define_union('BC', 'B', 'C')
+    data.define_data('A')
+    data.define_data('B')
+    data.define_data('C')
+    data.validate()
+    assert issubclass(data.A, data.AB)
+    assert issubclass(data.A, data.AB)
+    assert not issubclass(data.C, data.AB)
+    assert not issubclass(data.A, data.BC)
+    assert issubclass(data.B, data.BC)
+    assert issubclass(data.C, data.BC)
