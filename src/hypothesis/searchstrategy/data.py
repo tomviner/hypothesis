@@ -3,6 +3,7 @@ from hypothesis.settings import Settings
 from hypothesis.searchstrategy import strategy, SearchStrategy
 from hypothesis.internal.reflection import is_valid_identifier
 from hypothesis.internal.compat import string_types
+import inspect
 
 from collections import namedtuple
 
@@ -51,10 +52,6 @@ class RuleProxy(object):
         self.name = name
 
 
-class Types(object):
-    pass
-
-
 def check_rule_name(name):
     if not isinstance(name, string_types):
         raise InvalidDefinition(
@@ -72,6 +69,14 @@ def check_rule_name(name):
         )
 
 
+class RuleType(object):
+    pass
+
+
+class DataDefinitionType(RuleType):
+    pass
+
+
 def rule(name):
     check_rule_name(name)
     return RuleProxy(name)
@@ -83,17 +88,55 @@ class DataDefinition(object):
         self.validated = False
         self.rules = {}
 
-    def install_type(self, name, members):
+    def _define_union_type(self, name):
+        check_rule_name(name)
+        T = type(name, (object,), {})
+        setattr(self, name, T)
+
+    def define_types(self):
+        for k, v in list(inspect.getmembers(self)):
+            if isinstance(v, type) and issubclass(v, RuleType):
+                delattr(self, k)
+
+        parents = {}
+
+        for k, v in self.rules.items():
+            if isinstance(v, UnionDefinition):
+                for r in v.alternatives:
+                    parents.setdefault(r.name, set()).add(v.name)
+                self._define_union_type(v.name)
+
+        for k, v in self.rules.items():
+            if isinstance(v, RuleDefinition):
+                self._install_type(v.name, v.members, parents.get(v.name, ()))
+
+    def _install_type(self, name, members, parents):
         check_rule_name(name)
         members = tuple(sorted(members))
-        existing = getattr(self, name, None)
-        if existing is not None and existing._fields == members:
-            return
-        setattr(self, name, namedtuple(name, members))
+
+        class DDType(object):
+            @classmethod
+            def rule(cls):
+                result = self.rule(name)
+                assert isinstance(result, Rule)
+                return result
+
+            @classmethod
+            def argspec(cls):
+                targets = cls.rule().members
+                result = []
+                for m in cls._fields:
+                    r = targets[m]
+                    if isinstance(r, Rule):
+                        result.append(r.name)
+                return tuple(result)
+
+        parents = tuple(sorted(getattr(self, n) for n in parents)) + (
+            DataDefinitionType, namedtuple(name, members), DDType)
+        setattr(self, name, type(name, parents, {}))
 
     def define_data(self, name, **members):
         result = RuleDefinition(name, members)
-        self.install_type(name, members)
         self.validated = False
         self.rules[name] = result
         return result
@@ -170,5 +213,47 @@ class DataDefinition(object):
                     "r": ', '.join(unproductive_rules)
                 }
             )
-
+        self.define_types()
         self.validated = True
+
+
+@strategy.extend_static(DataDefinitionType)
+def data_type_strategy(specifier, settings):
+    argspec = specifier.argspec()
+    if argspec:
+        raise NotImplementedError(
+            "Cannot yet define strategies for non-empty argspec %r" % (
+                argspec,
+            )
+        )
+    rule = specifier.rule()
+    if isinstance(rule, UnionDefinition):
+        raise NotImplementedError(
+            "Cannot yet define strategies for union types"
+        )
+    return strategy(
+        specifier(*[
+            rule.members[f] for f in specifier._fields
+        ]),
+        settings
+    )
+
+
+class Bundle(object):
+    def __init__(self):
+        self.data = {}
+
+    def __getitem__(self, key):
+        return self.data.setdefault(key, [])
+
+
+class DataDefinitionStrategy(SearchStrategy):
+    def __init__(self, definition):
+        definition.validate()
+        self.definition = definition
+
+    def produce_parameter(self, random):
+        pass
+
+    def produce_strategy(self, context, pv):
+        pass
