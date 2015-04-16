@@ -2,6 +2,8 @@ from hypothesis.errors import HypothesisException
 from hypothesis.settings import Settings
 from hypothesis.searchstrategy import strategy, SearchStrategy
 
+from collections import namedtuple
+
 
 class InvalidDefinition(HypothesisException):
     pass
@@ -47,14 +49,27 @@ class RuleProxy(object):
         self.name = name
 
 
+class Types(object):
+    pass
+
+
 class DataDefinition(object):
     def __init__(self, settings=None):
         self.settings = settings or Settings.default
         self.validated = False
         self.rules = {}
+        self.types = Types()
 
-    def define_rule(self, name, **members):
+    def install_type(self, name, members):
+        members = tuple(sorted(members))
+        existing = getattr(self.types, name, None)
+        if existing is not None and existing._fields == members:
+            return
+        setattr(self.types, name, namedtuple(name, members))
+
+    def define_data(self, name, **members):
         result = RuleDefinition(name, members)
+        self.install_type(name, members)
         self.validated = False
         self.rules[name] = result
         return result
@@ -132,3 +147,23 @@ class DataDefinition(object):
             )
 
         self.validated = True
+
+
+class Bundle(object):
+    def __init__(self):
+        self.data = {}
+
+    def __getitem__(self, key):
+        return self.data.setdefault(key, [])
+
+
+class DataDefinitionStrategy(SearchStrategy):
+    def __init__(self, definition):
+        definition.validate()
+        self.definition = definition
+
+    def produce_parameter(self, random):
+        pass
+
+    def produce_strategy(self, context, pv):
+        pass
