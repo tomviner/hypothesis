@@ -1,7 +1,7 @@
 import pytest
 
 from hypothesis.searchstrategy.data import DataDefinition, InvalidDefinition, \
-    optional
+    optional, rule
 
 
 def test_empty_data_is_invalid():
@@ -9,10 +9,27 @@ def test_empty_data_is_invalid():
         DataDefinition().validate()
 
 
+def test_rules_must_be_capitalized():
+    data = DataDefinition()
+    with pytest.raises(InvalidDefinition):
+        data.rule('kittens')
+
+
+def test_rules_must_be_valid_python_identifiers():
+    data = DataDefinition()
+    with pytest.raises(InvalidDefinition):
+        data.rule('Kit tens')
+
+
+def test_rules_must_be_strings():
+    with pytest.raises(InvalidDefinition):
+        rule(1)
+
+
 def test_self_only_recursive_data_is_invalid():
     data = DataDefinition()
     data.define_data(
-        'Selfy', selfy=data.rule('Selfy')
+        'Selfy', selfy=rule('Selfy')
         )
     with pytest.raises(InvalidDefinition):
         data.validate()
@@ -21,7 +38,7 @@ def test_self_only_recursive_data_is_invalid():
 def test_dangling_rule_is_invalid():
     data = DataDefinition()
     data.define_data(
-        'A', b=data.rule('B'),
+        'A', b=rule('B'),
     )
     with pytest.raises(InvalidDefinition):
         data.validate()
@@ -38,7 +55,7 @@ def test_pure_struct_data_is_valid():
 def test_optional_self_recursion_is_valid():
     data = DataDefinition()
     data.define_data(
-        'Nat', s=optional(data.rule('Nat'))
+        'Nat', s=optional(rule('Nat'))
     )
     data.validate()
 
@@ -46,7 +63,7 @@ def test_optional_self_recursion_is_valid():
 def test_labelled_binary_tree_is_valid():
     data = DataDefinition()
     data.define_data('Leaf', label=int)
-    data.define_data('Split', left=data.rule('Tree'), right=data.rule('Tree'))
+    data.define_data('Split', left=rule('Tree'), right=rule('Tree'))
     data.define_union('Tree', 'Leaf', 'Split')
     data.validate()
 

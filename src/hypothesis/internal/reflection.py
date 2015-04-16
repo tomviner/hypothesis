@@ -281,8 +281,12 @@ VALID_PYTHON_IDENTIFIER = re.compile(
 )
 
 
+def is_valid_identifier(identifier):
+    return bool(VALID_PYTHON_IDENTIFIER.match(identifier))
+
+
 def check_valid_identifier(identifier):
-    if not VALID_PYTHON_IDENTIFIER.match(identifier):
+    if not is_valid_identifier(identifier):
         raise ValueError('%r is not a valid python identifier' % (identifier,))
 
 

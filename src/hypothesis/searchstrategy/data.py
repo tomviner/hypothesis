@@ -1,6 +1,8 @@
 from hypothesis.errors import HypothesisException
 from hypothesis.settings import Settings
 from hypothesis.searchstrategy import strategy, SearchStrategy
+from hypothesis.internal.reflection import is_valid_identifier
+from hypothesis.internal.compat import string_types
 
 from collections import namedtuple
 
@@ -53,19 +55,41 @@ class Types(object):
     pass
 
 
+def check_rule_name(name):
+    if not isinstance(name, string_types):
+        raise InvalidDefinition(
+            "%r is not a string" % (name,)
+        )
+    if not is_valid_identifier(name):
+        raise InvalidDefinition(
+            "%r is not a valid python identifier" % (name,)
+        )
+    if name[0] != name[0].upper():
+        raise InvalidDefinition(
+            "Invalid rule name %s: Rules must be capitalized" % (
+                name,
+            )
+        )
+
+
+def rule(name):
+    check_rule_name(name)
+    return RuleProxy(name)
+
+
 class DataDefinition(object):
     def __init__(self, settings=None):
         self.settings = settings or Settings.default
         self.validated = False
         self.rules = {}
-        self.types = Types()
 
     def install_type(self, name, members):
+        check_rule_name(name)
         members = tuple(sorted(members))
-        existing = getattr(self.types, name, None)
+        existing = getattr(self, name, None)
         if existing is not None and existing._fields == members:
             return
-        setattr(self.types, name, namedtuple(name, members))
+        setattr(self, name, namedtuple(name, members))
 
     def define_data(self, name, **members):
         result = RuleDefinition(name, members)
@@ -81,6 +105,7 @@ class DataDefinition(object):
         return result
 
     def rule(self, name):
+        check_rule_name(name)
         try:
             return self.rules[name]
         except KeyError:
@@ -147,23 +172,3 @@ class DataDefinition(object):
             )
 
         self.validated = True
-
-
-class Bundle(object):
-    def __init__(self):
-        self.data = {}
-
-    def __getitem__(self, key):
-        return self.data.setdefault(key, [])
-
-
-class DataDefinitionStrategy(SearchStrategy):
-    def __init__(self, definition):
-        definition.validate()
-        self.definition = definition
-
-    def produce_parameter(self, random):
-        pass
-
-    def produce_strategy(self, context, pv):
-        pass
