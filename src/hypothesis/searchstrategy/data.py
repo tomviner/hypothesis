@@ -88,10 +88,34 @@ class DataDefinition(object):
         self.validated = False
         self.rules = {}
 
-    def _define_union_type(self, name):
+    def _define_union_type(self, name, parents, stack=None):
         check_rule_name(name)
-        T = type(name, (object,), {})
+        if stack is None:
+            stack = []
+        existing = getattr(self, name, None)
+        if existing is not None:
+            assert issubclass(existing, RuleType)
+            return existing
+        if name in stack:
+            stack.append(name)
+            raise InvalidDefinition(
+                "Cyclic definition of unions %s" % (" < ".join(stack),)
+            )
+        stack.append(name)
+        l = len(stack)
+        parent_types = []
+        for p in parents.get(name, ()):
+            parent_types.append(self._define_union_type(
+                p, parents, stack
+            ))
+        assert len(stack) == l
+        assert stack[-1] == name
+        stack.pop()
+        if not parent_types:
+            parent_types = (RuleType,)
+        T = type(name, tuple(parent_types), {})
         setattr(self, name, T)
+        return T
 
     def define_types(self):
         for k, v in list(inspect.getmembers(self)):
@@ -99,12 +123,17 @@ class DataDefinition(object):
                 delattr(self, k)
 
         parents = {}
+        unions = []
 
         for k, v in self.rules.items():
             if isinstance(v, UnionDefinition):
                 for r in v.alternatives:
                     parents.setdefault(r.name, set()).add(v.name)
-                self._define_union_type(v.name)
+                unions.append(v.name)
+
+        for u in unions:
+            self._define_union_type(u, parents)
+            assert hasattr(self, u)
 
         for k, v in self.rules.items():
             if isinstance(v, RuleDefinition):
@@ -145,6 +174,8 @@ class DataDefinition(object):
         return result
 
     def define_union(self, name, *alternatives):
+        if not alternatives:
+            raise InvalidDefinition("Unions must have at least one element")
         result = UnionDefinition(name, map(self.rule, alternatives))
         self.validated = False
         self.rules[name] = result

@@ -115,3 +115,54 @@ def test_can_be_in_multiple_unions():
     assert not issubclass(data.A, data.BC)
     assert issubclass(data.B, data.BC)
     assert issubclass(data.C, data.BC)
+
+
+def test_unions_may_be_of_unions():
+    data = DataDefinition()
+    data.define_union('A', 'B')
+    data.define_union('B', 'C')
+    data.define_data('C')
+    data.validate()
+
+    assert issubclass(data.C, data.B)
+    assert issubclass(data.C, data.A)
+    assert issubclass(data.B, data.A)
+
+
+def test_unions_may_be_of_multiple_unions():
+    data = DataDefinition()
+    data.define_union('A', 'C')
+    data.define_union('B', 'C')
+    data.define_union('C', 'D')
+    data.define_data('D')
+    data.validate()
+
+    assert issubclass(data.C, data.B)
+    assert issubclass(data.C, data.A)
+    assert not issubclass(data.B, data.A)
+    assert issubclass(data.D, data.C)
+
+
+def test_unions_may_not_be_empty():
+    data = DataDefinition()
+    with pytest.raises(InvalidDefinition):
+        data.define_union('A')
+
+
+def test_unions_may_not_be_recursive():
+    data = DataDefinition()
+    data.define_union('A', 'B', 'C')
+    data.define_union('B', 'A', 'C')
+    data.define_data('C')
+    with pytest.raises(InvalidDefinition):
+        data.validate()
+
+
+def test_unions_may_not_be_indirectly_recursive():
+    data = DataDefinition()
+    data.define_union('A', 'B', 'D')
+    data.define_union('B', 'C', 'D')
+    data.define_union('C', 'A', 'D')
+    data.define_data('D')
+    with pytest.raises(InvalidDefinition):
+        data.validate()
