@@ -273,21 +273,40 @@ def data_type_strategy(specifier, settings):
     )
 
 
+class BuildOperation(object):
+    def __init__(self, rule, data):
+        self.rule = rule
+        self.data = data
+
+
+class OperationStrategy(SearchStrategy):
+    def __init__(self, data_definition, settings):
+        self.data_definition = data_definition
+
+    def produce_parameter(self, random):
+        pass
+
+    def produce_template(self, context, parameter_value):
+        pass
+
+
+def run_program(program):
+    bundle = Bundle()
+    for p in program:
+        p.execute(bundle)
+    return bundle
+
+
+@strategy.extend(DataDefinition)
+def data_definition_strategy(specifier, settings):
+    return strategy([OperationStrategy(specifier, settings)], settings).map(
+        run_program
+    )
+
+
 class Bundle(object):
     def __init__(self):
         self.data = {}
 
     def __getitem__(self, key):
         return self.data.setdefault(key, [])
-
-
-class DataDefinitionStrategy(SearchStrategy):
-    def __init__(self, definition):
-        definition.validate()
-        self.definition = definition
-
-    def produce_parameter(self, random):
-        pass
-
-    def produce_strategy(self, context, pv):
-        pass
