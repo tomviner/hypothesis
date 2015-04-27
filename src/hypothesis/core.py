@@ -459,6 +459,9 @@ def given(*generator_arguments, **generator_kwargs):
             ))
 
         wrapped_test.convert_arguments = convert_arguments
+        wrapped_test.given_arguments = tuple(generator_arguments)
+        wrapped_test.given_kwargs = dict(generator_kwargs)
+        wrapped_test.underlying_function = test
         wrapped_test.__name__ = test.__name__
         wrapped_test.__doc__ = test.__doc__
         wrapped_test.is_hypothesis_test = True
