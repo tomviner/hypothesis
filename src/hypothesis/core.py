@@ -362,6 +362,17 @@ def given(*generator_arguments, **generator_kwargs):
             defaults=tuple(map(HypothesisProvided, specifiers))
         )
 
+        def convert_arguments(arguments, kwargs):
+            def convert_to_specifier(v):
+                if isinstance(v, HypothesisProvided):
+                    return v.value
+                else:
+                    return just(v)
+            return (
+                tuple(map(convert_to_specifier, arguments)),
+                {k: convert_to_specifier(v) for k, v in kwargs.items()}
+            )
+
         @copy_argspec(
             test.__name__, argspec
         )
@@ -404,16 +415,7 @@ def given(*generator_arguments, **generator_kwargs):
                 test_runner(lambda: test(*arguments, **kwargs))
                 return
 
-            def convert_to_specifier(v):
-                if isinstance(v, HypothesisProvided):
-                    return v.value
-                else:
-                    return just(v)
-
-            given_specifier = (
-                tuple(map(convert_to_specifier, arguments)),
-                {k: convert_to_specifier(v) for k, v in kwargs.items()}
-            )
+            given_specifier = convert_arguments(arguments, kwargs)
 
             search_strategy = strategy(given_specifier, settings)
 
@@ -456,6 +458,7 @@ def given(*generator_arguments, **generator_kwargs):
                 print_example=True
             ))
 
+        wrapped_test.convert_arguments = convert_arguments
         wrapped_test.__name__ = test.__name__
         wrapped_test.__doc__ = test.__doc__
         wrapped_test.is_hypothesis_test = True
