@@ -27,10 +27,10 @@ def multifind(specifier, classify, settings=None, random=None):
     results = {}
 
     def incorporate(label, example):
-        if (
-            label not in results or
-            search_strategy.strictly_simpler(example, results[label])
-        ):
+        if label not in results:
+            results[label] = example
+            return True
+        if search_strategy.strictly_simpler(example, results[label]):
             results[label] = example
             return True
         return False
@@ -63,33 +63,40 @@ def multifind(specifier, classify, settings=None, random=None):
         if not any_improvements:
             parameter_source.mark_bad()
 
-    minimized = set()
     queue = list(results)
     random.shuffle(queue)
     while queue and not time_to_call_it_a_day(settings, start_time):
         target = queue.pop()
-        if target in minimized:
-            continue
         template = results[target]
-        for simplify in search_strategy.simplifiers(random, template):
-            any_local_improvements = True
-            while any_local_improvements:
-                any_local_improvements = False
-                for s in simplify(random, template):
-                    if tracker.track(s) > 1:
-                        continue
-                    labels = classify(search_strategy.reify(s))
-                    for l in labels:
-                        if incorporate(l, s):
-                            queue.append(l)
-                            minimized.discard(l)
-                    if target in labels:
-                        results[target] = s
-                        template = s
-                        any_local_improvements = True
-                        break
-        minimized.add(target)
+        changed = True
+        while changed:
+            changed = False
+            for simplify in search_strategy.simplifiers(random, template):
+                while True:
+                    simpler = simplify(random, template)
+                    for s in simpler:
+                        if tracker.track(s) > 1:
+                            continue
+                        try:
+                            labels = classify(search_strategy.reify(s))
+                        except UnsatisfiedAssumption:
+                            continue
+                        if target in labels:
+                            changed = True
+                            template = s
+                            results[target] = s
 
-    for k, v in results.items():
-        results[k] = search_strategy.reify(v)
-    return results
+                        for l in labels:
+                            if incorporate(l, s):
+                                changed = True
+                                queue.append(l)
+                    else:
+                        break
+
+    output_tracker = Tracker()
+    result = []
+    for v in results.values():
+        if output_tracker.track(v) > 1:
+            continue
+        result.append(search_strategy.reify(v))
+    return result
