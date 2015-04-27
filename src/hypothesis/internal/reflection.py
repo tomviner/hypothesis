@@ -23,7 +23,6 @@ import sys
 import types
 import hashlib
 import inspect
-from functools import wraps
 
 from hypothesis.settings import storage_directory
 from hypothesis.internal.compat import ARG_NAME_ATTRIBUTE, hrange, \
@@ -386,11 +385,12 @@ def copy_argspec(name, argspec):
         result = base_accept(f)
         result.__defaults__ = argspec.defaults
         return result
+    accept.__name__ = name
     return accept
 
 
 def proxies(target):
     def accept(proxy):
-        return wraps(target)(
+        return (
             copy_argspec(target.__name__, inspect.getargspec(target))(proxy))
     return accept
