@@ -100,6 +100,9 @@ case "${TOXENV}" in
         pyenv install -s pypy3-2.4.0
         ln -s $PYENVS/pypy3-2.4.0/bin/pypy $SNAKEPIT/pypy3
         ;;
+    debug)
+        pyenv install -s 3.4.3 --debug
+        ln -s $PYENVS/3.4.3-debug/bin/python $SNAKEPIT/python3.4-debug
 esac
 
 pip install --upgrade tox pip

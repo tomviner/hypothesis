@@ -21,6 +21,7 @@ env:
         - TOXENV=lint
         - TOXENV=examples2
         - TOXENV=examples3
+        - TOXENV=debug
         - TOXENV=pypy
         - TOXENV=py34
         - TOXENV=py27
@@ -40,6 +41,8 @@ matrix:
           env: TOXENV=examples2
         - os: osx
           env: TOXENV=examples3
+        - os: osx
+          env: TOXENV=debug
         - os: osx
           env: TOXENV=coverage
         - os: osx
