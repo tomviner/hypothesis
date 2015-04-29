@@ -23,6 +23,11 @@ from hypothesis.settings import set_hypothesis_home_dir
 
 warnings.filterwarnings('error', category=UnicodeWarning)
 
+try:
+    warnings.filterwarnings('error', category=ResourceWarning)
+except NameError:
+    pass
+
 set_hypothesis_home_dir(mkdtemp())
 
 Settings.default.max_examples = 1000
