@@ -56,10 +56,10 @@ def test_minimizes_ints_from_down_to_boundary(boundary):
 
 
 @boundaries
-def test_minimizes_integer_range_to_boundary(boundary):
+def test_minimizes_integer_range_to_center(boundary):
     assert find(
         integers(boundary, boundary + 100), lambda x: True
-    ) == boundary
+    ) == boundary + 50
 
 
 def test_single_integer_range_is_range():

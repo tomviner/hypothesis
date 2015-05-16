@@ -230,19 +230,21 @@ class BoundedIntStrategy(SearchStrategy):
     """A strategy for providing integers in some interval with inclusive
     endpoints."""
 
-    def __init__(self, start, end):
+    def __init__(self, start, end, center=None):
         SearchStrategy.__init__(self)
         self.start = start
         self.end = end
+        self.center = center or ((start + end) // 2)
         if start > end:
             raise ValueError('Invalid range [%d, %d]' % (start, end))
+        assert start <= self.center <= end
         self.template_upper_bound = infinitish(end - start + 1)
 
     def __repr__(self):
         return 'BoundedIntStrategy(%d, %d)' % (self.start, self.end)
 
     def strictly_simpler(self, x, y):
-        return x < y
+        return abs(x - self.center) < abs(y - self.center)
 
     def draw_parameter(self, random):
         n = 1 + dist.geometric(random, 0.01)
@@ -272,17 +274,19 @@ class BoundedIntStrategy(SearchStrategy):
         if x == self.start:
             return
 
-        probe = self.start
+        probe = self.center
         while True:
             yield probe
             new_probe = (x + probe) // 2
-            if new_probe > probe:
+            if new_probe != probe:
                 probe = new_probe
             else:
                 break
 
         for _ in hrange(10):
-            yield random.randint(self.start, x - 1)
+            left = min(self.center, x)
+            right = max(self.center, x)
+            yield random.randint(left, right)
 
 
 def is_integral(value):
