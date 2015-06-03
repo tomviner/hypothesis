@@ -280,8 +280,6 @@ class SearchStrategy(object):
         raise NotImplementedError(  # pragma: no cover
             '%s.from_basic()' % (self.__class__.__name__))
 
-    # Gory implementation details
-
     #: Provide an upper bound on the number of available templates.
     #: The intended interpretation is that template_upper_bound means "if
     #: you've only found this many templates don't worry about it". It is also
@@ -293,8 +291,24 @@ class SearchStrategy(object):
     #: lead to the same value.
     template_upper_bound = Infinity
 
+    # Gory implementation details
+
     def __init__(self):
         pass
+
+    def arrange(self, templates):
+        """Sort a list of templates in place from simplest to most complicated.
+
+        This isn't justing list.sort() because strictly_simpler is only
+        a partial order
+
+        """
+        for i in hrange(len(templates)):
+            for j in hrange(i, 0, -1):
+                if self.strictly_simpler(templates[j], templates[j - 1]):
+                    templates[j], templates[j - 1] = (
+                        templates[j - 1], templates[j]
+                    )
 
     def draw_and_produce(self, random):
         return self.draw_template(random, self.draw_parameter(random))

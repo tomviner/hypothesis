@@ -15,6 +15,7 @@
 from __future__ import division, print_function, absolute_import, \
     unicode_literals
 
+import sys
 import time
 import inspect
 import binascii
@@ -46,11 +47,11 @@ from hypothesis.searchstrategy.strategies import strategy
 [assume]
 
 
-def time_to_call_it_a_day(settings, start_time):
+def time_to_call_it_a_day(timeout, start_time):
     """Have we exceeded our timeout?"""
-    if settings.timeout <= 0:
+    if timeout <= 0:
         return False
-    return time.time() >= start_time + settings.timeout
+    return time.time() >= start_time + timeout
 
 
 def find_satisfying_template(
@@ -91,7 +92,7 @@ def find_satisfying_template(
             if examples_considered >= max_iterations:
                 break
             examples_considered += 1
-            if time_to_call_it_a_day(settings, start_time):
+            if time_to_call_it_a_day(settings.timeout, start_time):
                 break
             tracker.track(example)
             try:
@@ -115,7 +116,7 @@ def find_satisfying_template(
             break
         if satisfying_examples >= max_examples:
             break
-        if time_to_call_it_a_day(settings, start_time):
+        if time_to_call_it_a_day(settings.timeout, start_time):
             break
         examples_considered += 1
 
@@ -209,7 +210,7 @@ def simplify_template_such_that(
                 if warmup < max_warmup:
                     simpler = islice(simpler, warmup)
                 for s in simpler:
-                    if time_to_call_it_a_day(settings, start_time):
+                    if time_to_call_it_a_day(settings.timeout, start_time):
                         return
                     if tracker.track(s) > 1:
                         continue
@@ -584,5 +585,156 @@ def find(specifier, condition, settings=None, random=None, storage=None):
             )
         raise NoSuchExample(get_pretty_function_description(condition))
 
+
+AssumptionNotMet = namedtuple('AssumptionNotMet', 'stack')
+Empty = namedtuple('Empty', ())
+
+
+def multifind_internal(
+    strategy, classify, settings=None, random=None, storage=None
+):
+    if settings is None:
+        settings = Settings.default
+
+    if storage is None and settings.database is not None:
+        storage = settings.database.storage(
+            'multifind(%s)' % (
+                binascii.hexlify(function_digest(classify)).decode('ascii'),
+            )
+        )
+
+    if random is None:
+        if settings.derandomize:
+            random = Random(
+                function_digest(classify)
+            )
+        else:
+            random = Random()
+
+    result = {}
+
+    tracker = Tracker()
+
+    def consider_template_for_label(template, label):
+        if (
+            label not in result or
+            strategy.strictly_simpler(template, result[label])
+        ):
+            result[label] = template
+            return True
+        return False
+
+    def install_template(template):
+        if tracker.track(template) > 1:
+            return False
+        try:
+            value = strategy.reify(template)
+            string_value = repr(value)
+            labels = set(classify(value))
+            if not labels:
+                consider_template_for_label(template, Empty())
+            else:
+                improving = False
+                for l in labels:
+                    if consider_template_for_label(template, l):
+                        verbose_report(
+                            lambda: 'Value %s improves label %r' % (
+                                string_value, l
+                            ))
+                        improving = True
+                return improving
+        except UnsatisfiedAssumption:
+            return consider_template_for_label(
+                template,
+                AssumptionNotMet('\n'.join(
+                    '%s:%d' % l[:2]
+                    for l in traceback.extract_tb(sys.exc_info()[-1])
+                )),)
+
+    examples_considered = 0
+    for template in storage.fetch(strategy):
+        install_template(template)
+        examples_considered += 1
+
+    parameter_source = ParameterSource(
+        random=random, strategy=strategy,
+        max_tries=10,
+    )
+
+    start_time = time.time()
+
+    for parameter in islice(
+        parameter_source, settings.max_iterations
+    ):  # pragma: no branch
+        if len(tracker) >= strategy.template_upper_bound:
+            break
+        if examples_considered >= settings.max_iterations:
+            break
+        if time_to_call_it_a_day(settings.timeout / 2, start_time):
+            break
+        template = strategy.draw_template(random, parameter)
+        if not install_template(template):
+            parameter_source.mark_bad()
+    assert result
+
+    def yield_on_step():
+        improved = True
+        while improved:
+            yield
+            improved = False
+            pool = list(set(result.values()))
+            assert pool
+            strategy.arrange(pool)
+            for template in pool:
+                yield
+                if improved:
+                    break
+                for simplify in strategy.simplifiers(random, template):
+                    debug_report(
+                        lambda: 'Applying simplifier %s' % (
+                            simplify.__name__,))
+                    local_change = True
+                    while local_change:
+                        yield
+                        local_change = False
+                        for simpler in simplify(random, template):
+                            yield
+                            if install_template(simpler):
+                                local_change = True
+                                improved = True
+                                template = simpler
+                                break
+    for _ in yield_on_step():
+        if time_to_call_it_a_day(settings.timeout, start_time):
+            debug_report('Timing out...')
+            break
+    inverted = {}
+    for label, template in result.items():
+        if isinstance(label, AssumptionNotMet):
+            continue
+        inverted.setdefault(template, set()).add(label)
+
+    templates = list(inverted.keys())
+    if storage is not None:
+        for t in templates:
+            storage.save(t, strategy)
+    strategy.arrange(templates)
+    return [(template, inverted[template]) for template in templates]
+
+
+def multifind(
+    strategy, classify, settings=None, random=None, storage=None
+):
+    """A classify function takes a value and returns an iterable over some tags
+    for that value.
+
+    multifind then returns a list of simple values drawn from strategy
+    for hitting as many of those tags as it can find.
+
+    """
+    templates_with_labels = multifind_internal(
+        strategy, classify, settings, random, storage
+    )
+    return [strategy.reify(template) for template, _ in templates_with_labels]
 
 load_entry_points()

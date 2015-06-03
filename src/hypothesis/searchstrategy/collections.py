@@ -14,7 +14,7 @@ from __future__ import division, print_function, absolute_import, \
     unicode_literals
 
 from random import Random
-from collections import OrderedDict, namedtuple
+from collections import Counter, OrderedDict, namedtuple
 
 import hypothesis.internal.distributions as dist
 from hypothesis.settings import Settings
@@ -220,6 +220,7 @@ class ListStrategy(SearchStrategy):
 
         # yield self.simplify_to_mid
         yield self.simplify_with_random_discards
+        yield self.simplify_with_clone_killing
         yield self.simplify_with_example_cloning
         yield self.simplify_arrange_by_pivot
         yield self.simplify_with_single_deletes
@@ -295,6 +296,14 @@ class ListStrategy(SearchStrategy):
             for t in bits:
                 if t and len(t) < len(x) and len(t) >= self.min_size:
                     yield tuple(t)
+
+    def simplify_with_clone_killing(self, random, x):
+        counts = Counter()
+        for t in x:
+            counts[t] += 1
+        clones = {t for t, v in counts.items() if v > 1}
+        for c in clones:
+            yield tuple(t for t in x if t != c)
 
     def simplify_with_example_cloning(self, random, x):
         assert isinstance(x, tuple)
