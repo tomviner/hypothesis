@@ -710,8 +710,6 @@ def multifind_internal(
             break
     inverted = {}
     for label, template in result.items():
-        if isinstance(label, AssumptionNotMet):
-            continue
         inverted.setdefault(template, set()).add(label)
 
     templates = list(inverted.keys())
@@ -735,6 +733,10 @@ def multifind(
     templates_with_labels = multifind_internal(
         strategy, classify, settings, random, storage
     )
-    return [strategy.reify(template) for template, _ in templates_with_labels]
+    return [
+        strategy.reify(template)
+        for template, labels in templates_with_labels
+        if not any(isinstance(l, AssumptionNotMet) for l in labels)
+    ]
 
 load_entry_points()
