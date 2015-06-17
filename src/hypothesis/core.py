@@ -38,7 +38,6 @@ from hypothesis.reporting import report, debug_report, verbose_report, \
 from hypothesis.deprecation import note_deprecation
 from hypothesis.internal.compat import qualname
 from hypothesis.internal.tracker import Tracker
-from hypothesis.internal.coverage import Tracer, run_and_report
 from hypothesis.internal.reflection import arg_string, copy_argspec, \
     function_digest, fully_qualified_name, \
     get_pretty_function_description
@@ -637,18 +636,11 @@ def multifind_internal(
             else:
                 improving = False
                 for l in labels:
-                    label_is_new = l not in result
                     if consider_template_for_label(template, l):
-                        if label_is_new:
-                            verbose_report(
-                                lambda: 'Value %s gives new label %r' % (
-                                    string_value, l
-                                ))
-                        else:
-                            verbose_report(
-                                lambda: 'Value %s improves label %r' % (
-                                    string_value, l
-                                ))
+                        verbose_report(
+                            lambda: 'Value %s improves label %r' % (
+                                string_value, l
+                            ))
                         improving = True
                 return improving
         except UnsatisfiedAssumption:
@@ -670,9 +662,10 @@ def multifind_internal(
     )
 
     start_time = time.time()
-    for iteration, parameter in enumerate(islice(
+
+    for parameter in islice(
         parameter_source, settings.max_iterations
-    )):  # pragma: no branch
+    ):  # pragma: no branch
         if len(tracker) >= strategy.template_upper_bound:
             break
         if examples_considered >= settings.max_iterations:
@@ -683,7 +676,6 @@ def multifind_internal(
         if not install_template(template):
             parameter_source.mark_bad()
     assert result
-    debug_report('Initial generation complete.')
 
     def yield_on_step():
         improved = True
@@ -746,18 +738,5 @@ def multifind(
         for template, labels in templates_with_labels
         if not any(isinstance(l, AssumptionNotMet) for l in labels)
     ]
-
-
-def find_interesting_examples(
-    strategy, target, settings=None, random=None, storage=None
-):
-    def classify(value):
-        success, result, covers = run_and_report(lambda: target(value))
-        labels = set()
-        labels.add(('result', success, type(result)))
-        for v in covers:
-            labels.add(('cover', v))
-        return labels
-    return multifind(strategy, classify, settings, random, storage)
 
 load_entry_points()
