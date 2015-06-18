@@ -330,8 +330,6 @@ class FloatStrategy(SearchStrategy):
             return False
         if math.isnan(y):
             return True
-        if math.isinf(x) and not math.isinf(y):
-            return False
         if y > 0:
             return 0 <= x < y
         else:
