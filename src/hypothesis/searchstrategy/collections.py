@@ -160,6 +160,7 @@ class ListStrategy(SearchStrategy):
         if strategies:
             self.element_strategy = one_of_strategies(strategies)
         else:
+            assert min_size == 0
             self.element_strategy = None
             self.template_upper_bound = 1
 
@@ -218,7 +219,6 @@ class ListStrategy(SearchStrategy):
                 yield self.simplifier_for_index(0, simplify)
             return
 
-        # yield self.simplify_to_mid
         yield self.simplify_with_random_discards
         yield self.simplify_with_clone_killing
         yield self.simplify_with_example_cloning
@@ -298,12 +298,16 @@ class ListStrategy(SearchStrategy):
                     yield tuple(t)
 
     def simplify_with_clone_killing(self, random, x):
+        if len(x) <= self.min_size:
+            return
         counts = Counter()
         for t in x:
             counts[t] += 1
         clones = {t for t, v in counts.items() if v > 1}
         for c in clones:
-            yield tuple(t for t in x if t != c)
+            result = tuple(t for t in x if t != c)
+            if len(result) >= self.min_size:
+                yield result
 
     def simplify_with_example_cloning(self, random, x):
         assert isinstance(x, tuple)
