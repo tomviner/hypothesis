@@ -59,7 +59,8 @@ def test_flatmap_retrieve_from_db():
         record_and_test_size()
 
     assert track
-    example = track[-1]
+    old_track = track
+    track = []
 
     while track:
         track.pop()
@@ -67,7 +68,7 @@ def test_flatmap_retrieve_from_db():
     with pytest.raises(AssertionError):
         record_and_test_size()
 
-    assert track[0] == example
+    assert track[0] in old_track
 
 
 @given(randoms())
