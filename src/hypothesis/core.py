@@ -520,8 +520,10 @@ def given(*generator_arguments, **generator_kwargs):
                 if any(isinstance(l, TestFailure) for l in labels)
             ]
             if not falsifying_templates:
-                if (
-                    len(tracker) < search_strategy.template_upper_bound and
+                if ((
+                    len(tracker) < search_strategy.template_upper_bound
+                    or satisfying_examples[0] == 0
+                ) and
                     satisfying_examples[0] < settings.min_satisfying_examples
                 ):
                     if time_to_call_it_a_day(settings.timeout, start_time):
