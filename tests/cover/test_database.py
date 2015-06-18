@@ -243,7 +243,7 @@ def test_can_handle_more_than_max_iterations_in_db():
 
         @given(
             integers(), settings=hs.Settings(
-                max_examples=1, max_iterations=2, database=db))
+                max_examples=1, max_iterations=2, database=db, max_shrinks=0))
         def test_seen(x):
             seen.append(x)
             assume(False)

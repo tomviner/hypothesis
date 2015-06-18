@@ -524,7 +524,11 @@ def given(*generator_arguments, **generator_kwargs):
                     len(tracker) < search_strategy.template_upper_bound
                     or satisfying_examples[0] == 0
                 ) and
-                    satisfying_examples[0] < settings.min_satisfying_examples
+                    satisfying_examples[0] < min(
+                        settings.min_satisfying_examples,
+                        settings.max_iterations,
+                        settings.max_examples,
+                    )
                 ):
                     if time_to_call_it_a_day(settings.timeout, start_time):
                         raise Timeout((
@@ -649,6 +653,9 @@ def multifind_internal(
     if settings is None:
         settings = Settings.default
 
+    max_iterations = max(settings.max_iterations, settings.max_examples)
+    max_examples = min(max_iterations, settings.max_examples)
+
     if storage is None and settings.database is not None:
         storage = settings.database.storage(
             'multifind(%s)' % (
@@ -681,7 +688,10 @@ def multifind_internal(
     if satisfying_examples is None:
         satisfying_examples = [0]
 
+    examples_considered = [0]
+
     def install_template(template):
+        examples_considered[0] += 1
         if tracker.track(template) > 1:
             return False
         try:
@@ -702,13 +712,23 @@ def multifind_internal(
             return False
 
     start_time = time.time()
+
+    def stop_now(timeout):
+        if len(tracker) >= strategy.template_upper_bound:
+            return True
+        if satisfying_examples[0] >= max_examples:
+            return True
+        if examples_considered[0] >= max_iterations:
+            return True
+        if time_to_call_it_a_day(timeout, start_time):
+            return True
+        return False
+
     if storage is not None:
         for template in storage.fetch(strategy):
+            if stop_now(settings.timeout / 2):
+                break
             install_template(template)
-            if time_to_call_it_a_day(settings.timeout / 2, start_time):
-                break
-            if len(tracker) >= settings.max_examples:
-                break
 
     parameter_source = ParameterSource(
         random=random, strategy=strategy,
@@ -716,13 +736,9 @@ def multifind_internal(
     )
 
     for parameter in islice(
-        parameter_source, settings.max_iterations
+        parameter_source, max_iterations
     ):  # pragma: no branch
-        if len(tracker) >= strategy.template_upper_bound:
-            break
-        if len(tracker) >= settings.max_examples:
-            break
-        if time_to_call_it_a_day(settings.timeout / 2, start_time):
+        if stop_now(settings.timeout / 2):
             break
         template = strategy.draw_template(random, parameter)
         if not install_template(template):
@@ -759,12 +775,7 @@ def multifind_internal(
                                 template = simpler
                                 break
     for _ in yield_on_step():
-        if len(tracker) >= settings.max_examples:
-            break
-        if successful_shrinks[0] >= settings.max_shrinks:
-            break
-        if time_to_call_it_a_day(settings.timeout, start_time):
-            debug_report('Timing out...')
+        if stop_now(settings.timeout):
             break
 
     if not result:
