@@ -17,4 +17,4 @@ def test_saves_minimal_example_of_label_in_database():
     test_is_longer_than_7()
     new_examples = list(test_is_longer_than_7.hypothesis_storage.fetch_basic())
     assert new_examples
-    assert [False] * 7 in new_examples
+    assert [[], [[0, 0, 0, 0, 0, 0, 0]]] in new_examples
