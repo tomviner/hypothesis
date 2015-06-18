@@ -705,7 +705,7 @@ def multifind_internal(
     if storage is not None:
         for template in storage.fetch(strategy):
             install_template(template)
-            if time_to_call_it_a_day(settings.timeout, start_time):
+            if time_to_call_it_a_day(settings.timeout / 2, start_time):
                 break
             if len(tracker) >= settings.max_examples:
                 break

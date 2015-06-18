@@ -45,11 +45,14 @@ class Storage(object):
             yield self.format.deserialize_data(data)
 
     def fetch(self, strategy):
+        templates = []
         for data in self.fetch_basic():
             try:
-                yield strategy.from_basic(data)
+                templates.append(strategy.from_basic(data))
             except BadData:
                 continue
+        strategy.arrange(templates)
+        return templates
 
 
 class ExampleDatabase(object):
