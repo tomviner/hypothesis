@@ -14,13 +14,15 @@ from __future__ import division, print_function, absolute_import, \
     unicode_literals
 
 import time
+from random import Random
 
 import pytest
 import hypothesis.settings as hs
 from hypothesis import given, assume, strategy
 from hypothesis.errors import Timeout, Unsatisfiable
 from hypothesis.database import ExampleDatabase
-from hypothesis.strategies import text, integers
+from hypothesis.strategies import text, tuples, integers, \
+    fixed_dictionaries
 from hypothesis.internal.compat import hrange, text_type, integer_types
 from hypothesis.database.backend import Backend, SQLiteBackend
 from hypothesis.database.formats import Format, JSONFormat
@@ -177,32 +179,19 @@ def test_can_handle_more_than_max_examples_values_in_db():
     db = ExampleDatabase()
 
     try:
-        settings = hs.Settings(database=db, max_examples=10, max_shrinks=0)
-        seen = []
-        first = [True]
-        for _ in range(10):
-            first[0] = True
-
-            @given(integers(), settings=settings)
-            def test_seen(x):
-                if x not in seen:
-                    if first[0]:
-                        first[0] = False
-                        seen.append(x)
-                assert x in seen
-
-            try:
-                test_seen()
-            except AssertionError:
-                pass
-
-        assert len(seen) >= 2
-
         seen = []
 
-        @given(integers(), settings=hs.Settings(max_examples=1, database=db))
+        @given(
+            integers(), settings=hs.Settings(
+                max_examples=1, database=db, max_shrinks=0))
         def test_seen(x):
             seen.append(x)
+        r = Random(1)
+        s = tuples(tuples(), fixed_dictionaries({'x': integers()}))
+        for _ in hrange(10):
+            test_seen.hypothesis_storage.save(
+                s.draw_template(r, s.draw_parameter(r)), s
+            )
         test_seen()
         assert len(seen) == 1
     finally:
