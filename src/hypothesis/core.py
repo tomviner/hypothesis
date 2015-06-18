@@ -716,9 +716,9 @@ def multifind_internal(
     def stop_now(budget):
         if len(tracker) >= strategy.template_upper_bound:
             return True
-        if satisfying_examples[0] >= max_examples * budget:
+        if satisfying_examples[0] >= max(1, max_examples * budget):
             return True
-        if examples_considered[0] >= max_iterations * budget:
+        if examples_considered[0] >= max_iterations:
             return True
         if time_to_call_it_a_day(settings.timeout * budget, start_time):
             return True
