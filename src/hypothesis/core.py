@@ -15,7 +15,6 @@
 from __future__ import division, print_function, absolute_import, \
     unicode_literals
 
-import sys
 import time
 import inspect
 import binascii
@@ -23,7 +22,7 @@ import functools
 import traceback
 from random import Random
 from itertools import islice
-from collections import namedtuple
+from collections import Counter, namedtuple
 
 import hypothesis.strategies as sd
 from hypothesis.extra import load_entry_points
@@ -31,12 +30,12 @@ from hypothesis.errors import Flaky, Timeout, NoSuchExample, \
     Unsatisfiable, InvalidArgument, UnsatisfiedAssumption, \
     DefinitelyNoSuchExample
 from hypothesis.control import assume
+from hypothesis.classify import use_classifier
 from hypothesis.settings import Settings, Verbosity
 from hypothesis.executors import executor
 from hypothesis.reporting import report, debug_report, verbose_report, \
     current_verbosity
 from hypothesis.deprecation import note_deprecation
-from hypothesis.internal.compat import qualname
 from hypothesis.internal.tracker import Tracker
 from hypothesis.internal.reflection import arg_string, copy_argspec, \
     function_digest, fully_qualified_name, \
@@ -333,6 +332,10 @@ def reify_and_execute(
     return run
 
 
+TestFailure = namedtuple('TestFailure', ('type',))
+UserClassification = namedtuple('UserClassification', ('label',))
+
+
 def given(*generator_arguments, **generator_kwargs):
     """A decorator for turning a test function that accepts arguments into a
     randomized test.
@@ -415,6 +418,12 @@ def given(*generator_arguments, **generator_kwargs):
             defaults=tuple(map(HypothesisProvided, specifiers))
         )
 
+        if settings.database:
+            storage = settings.database.storage(
+                fully_qualified_name(test))
+        else:
+            storage = None
+
         @copy_argspec(
             test.__name__, argspec
         )
@@ -470,39 +479,71 @@ def given(*generator_arguments, **generator_kwargs):
             )
 
             search_strategy = strategy(given_specifier, settings)
+            user_label_counts = Counter()
 
-            if settings.database:
-                storage = settings.database.storage(
-                    fully_qualified_name(test))
-            else:
-                storage = None
+            def classify_template(xs):
+                classify_labels = set()
 
-            def is_template_example(xs):
+                def incorporate(label):
+                    classify_labels.add(UserClassification(label))
+                    user_label_counts[label] += 1
+
                 try:
-                    test_runner(reify_and_execute(
-                        search_strategy, xs, test,
-                        always_print=settings.max_shrinks <= 0
-                    ))
-                    return False
+                    with use_classifier(incorporate):
+                        test_runner(reify_and_execute(
+                            search_strategy, xs, test,
+                            always_print=settings.max_shrinks <= 0
+                        ))
                 except UnsatisfiedAssumption as e:
                     raise e
                 except Exception as e:
                     if settings.max_shrinks <= 0:
                         raise e
                     verbose_report(traceback.format_exc)
-                    return True
-
-            is_template_example.__name__ = test.__name__
-            is_template_example.__qualname__ = qualname(test)
-
-            falsifying_template = None
-            try:
-                falsifying_template = best_satisfying_template(
-                    search_strategy, random, is_template_example,
-                    settings, storage
-                )
-            except NoSuchExample:
-                return
+                    classify_labels.add(TestFailure(type(e)))
+                return classify_labels
+            classify_template.__name__ = 'classify_template(%s)' % (
+                test.__name__,
+            )
+            tracker = Tracker()
+            start_time = time.time()
+            satisfying_examples = [0]
+            templates_with_labels = multifind_internal(
+                search_strategy, classify_template,
+                settings=settings, random=random, storage=storage,
+                tracker=tracker, satisfying_examples=satisfying_examples,
+                start_time=start_time
+            )
+            falsifying_templates = [
+                template
+                for template, labels in templates_with_labels
+                if any(isinstance(l, TestFailure) for l in labels)
+            ]
+            if not falsifying_templates:
+                if (
+                    len(tracker) < search_strategy.template_upper_bound and
+                    satisfying_examples[0] < settings.min_satisfying_examples
+                ):
+                    if time_to_call_it_a_day(settings.timeout, start_time):
+                        raise Timeout((
+                            'Ran out of time before finding a satisfying example for %s.' +
+                            ' Only found %d examples (%d satisfying assumptions) in %.2fs.'
+                        ) % (
+                            get_pretty_function_description(classify_template),
+                            len(tracker), satisfying_examples[
+                                0], time.time() - start_time
+                        ))
+                    else:
+                        raise Unsatisfiable((
+                            'Unable to satisfy assumptions of hypothesis %s. ' +
+                            'Only %d out of %d examples considered satisfied assumptions'
+                        ) % (
+                            get_pretty_function_description(classify_template),
+                            satisfying_examples[0], len(tracker)))
+                else:
+                    return
+            else:
+                falsifying_template = falsifying_templates[0]
 
             with settings:
                 test_runner(reify_and_execute(
@@ -521,6 +562,7 @@ def given(*generator_arguments, **generator_kwargs):
         wrapped_test.hypothesis_explicit_examples = getattr(
             test, 'hypothesis_explicit_examples', []
         )
+        wrapped_test.hypothesis_storage = storage
         return wrapped_test
     return run_test_with_generator
 
@@ -591,29 +633,34 @@ Empty = namedtuple('Empty', ())
 
 
 def multifind_internal(
-    strategy, classify, settings=None, random=None, storage=None
+    strategy, classify_template, settings=None, random=None, storage=None,
+    tracker=None, satisfying_examples=None, start_time=None
 ):
+    if start_time is None:
+        start_time = time.time()
+    if tracker is None:
+        tracker = Tracker()
+
     if settings is None:
         settings = Settings.default
 
     if storage is None and settings.database is not None:
         storage = settings.database.storage(
             'multifind(%s)' % (
-                binascii.hexlify(function_digest(classify)).decode('ascii'),
+                binascii.hexlify(
+                    function_digest(classify_template)).decode('ascii'),
             )
         )
 
     if random is None:
         if settings.derandomize:
             random = Random(
-                function_digest(classify)
+                function_digest(classify_template)
             )
         else:
             random = Random()
 
     result = {}
-
-    tracker = Tracker()
 
     def consider_template_for_label(template, label):
         if (
@@ -624,37 +671,31 @@ def multifind_internal(
             return True
         return False
 
+    if satisfying_examples is None:
+        satisfying_examples = [0]
+
     def install_template(template):
         if tracker.track(template) > 1:
             return False
         try:
-            value = strategy.reify(template)
-            string_value = repr(value)
-            labels = set(classify(value))
+            labels = set(classify_template(template))
+            satisfying_examples[0] += 1
             if not labels:
                 consider_template_for_label(template, Empty())
             else:
                 improving = False
                 for l in labels:
                     if consider_template_for_label(template, l):
-                        verbose_report(
-                            lambda: 'Value %s improves label %r' % (
-                                string_value, l
-                            ))
+                        debug_report(
+                            lambda: 'Improving label %r' % (l,))
                         improving = True
                 return improving
         except UnsatisfiedAssumption:
-            return consider_template_for_label(
-                template,
-                AssumptionNotMet('\n'.join(
-                    '%s:%d' % l[:2]
-                    for l in traceback.extract_tb(sys.exc_info()[-1])
-                )),)
+            return False
 
-    examples_considered = 0
-    for template in storage.fetch(strategy):
-        install_template(template)
-        examples_considered += 1
+    if storage is not None:
+        for template in storage.fetch(strategy):
+            install_template(template)
 
     parameter_source = ParameterSource(
         random=random, strategy=strategy,
@@ -668,16 +709,17 @@ def multifind_internal(
     ):  # pragma: no branch
         if len(tracker) >= strategy.template_upper_bound:
             break
-        if examples_considered >= settings.max_iterations:
+        if len(tracker) >= settings.max_examples:
             break
         if time_to_call_it_a_day(settings.timeout / 2, start_time):
             break
         template = strategy.draw_template(random, parameter)
         if not install_template(template):
             parameter_source.mark_bad()
-    assert result
 
     def yield_on_step():
+        if not result:
+            return
         improved = True
         while improved:
             yield
@@ -708,6 +750,10 @@ def multifind_internal(
         if time_to_call_it_a_day(settings.timeout, start_time):
             debug_report('Timing out...')
             break
+
+    if not result:
+        return []
+
     inverted = {}
     for label, template in result.items():
         inverted.setdefault(template, set()).add(label)
@@ -730,8 +776,11 @@ def multifind(
     for hitting as many of those tags as it can find.
 
     """
+    def classify_template(template):
+        return classify(strategy.reify(template))
+
     templates_with_labels = multifind_internal(
-        strategy, classify, settings, random, storage
+        strategy, classify_template, settings, random, storage
     )
     return [
         strategy.reify(template)

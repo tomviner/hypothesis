@@ -256,7 +256,7 @@ def test_errors_even_if_does_not_error_on_final_call():
     @given(integers())
     def rude(x):
         assert not any(
-            t[3] == 'best_satisfying_template'
+            t[3] == 'multifind_internal'
             for t in inspect.getouterframes(inspect.currentframe())
         )
 
@@ -490,12 +490,12 @@ def test_should_not_count_duplicates_towards_max_examples():
     seen = set()
 
     @given(integers(1, 10), settings=hs.Settings(
-        max_examples=9
+        max_examples=9, max_iterations=1000
     ))
     def test_i_see_you(x):
         seen.add(x)
     test_i_see_you()
-    assert len(seen) == 9
+    assert 9 <= len(seen) <= 10
 
 
 def test_can_timeout_during_an_unsuccessful_simplify():

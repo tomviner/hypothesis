@@ -40,11 +40,14 @@ class Storage(object):
         serialized = self.format.serialize_basic(converted)
         self.backend.save(self.key, serialized)
 
-    def fetch(self, strategy):
+    def fetch_basic(self):
         for data in self.backend.fetch(self.key):
+            yield self.format.deserialize_data(data)
+
+    def fetch(self, strategy):
+        for data in self.fetch_basic():
             try:
-                yield strategy.from_basic(
-                    self.format.deserialize_data(data))
+                yield strategy.from_basic(data)
             except BadData:
                 continue
 

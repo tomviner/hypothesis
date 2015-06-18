@@ -24,7 +24,8 @@ from __future__ import division, print_function, absolute_import, \
 from hypothesis.searchstrategy import strategy
 from hypothesis.settings import Settings, Verbosity
 from hypothesis.version import __version_info__, __version__
-from hypothesis.core import given, assume, find, example
+from hypothesis.core import given, assume, find, multifind, example
+from hypothesis.classify import classify
 
 # Force strategy extensions to be loaded here
 import hypothesis.strategies as unused
@@ -37,6 +38,8 @@ __all__ = [
     'given',
     'strategy',
     'find',
+    'multifind',
+    'classify',
     'example',
     '__version__',
     '__version_info__',
