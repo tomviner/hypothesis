@@ -716,8 +716,6 @@ def multifind_internal(
     def stop_now(budget):
         if len(tracker) >= strategy.template_upper_bound:
             return True
-        if satisfying_examples[0] >= max(1, max_examples * budget):
-            return True
         if examples_considered[0] >= max_iterations:
             return True
         if time_to_call_it_a_day(settings.timeout * budget, start_time):
@@ -729,6 +727,8 @@ def multifind_internal(
             if stop_now(0.5):
                 break
             install_template(template)
+            if satisfying_examples[0] >= max_examples:
+                break
 
     parameter_source = ParameterSource(
         random=random, strategy=strategy,
@@ -739,6 +739,8 @@ def multifind_internal(
         parameter_source, max_iterations
     ):  # pragma: no branch
         if stop_now(0.5):
+            break
+        if satisfying_examples[0] >= max_examples:
             break
         template = strategy.draw_template(random, parameter)
         if not install_template(template):
