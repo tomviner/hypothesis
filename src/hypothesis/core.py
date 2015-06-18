@@ -666,13 +666,15 @@ def multifind_internal(
             random = Random()
 
     result = {}
+    successful_shrinks = [0]
 
     def consider_template_for_label(template, label):
-        if (
-            label not in result or
-            strategy.strictly_simpler(template, result[label])
-        ):
+        if label not in result:
             result[label] = template
+            return True
+        if strategy.strictly_simpler(template, result[label]):
+            result[label] = template
+            successful_shrinks[0] += 1
             return True
         return False
 
@@ -699,16 +701,19 @@ def multifind_internal(
         except UnsatisfiedAssumption:
             return False
 
+    start_time = time.time()
     if storage is not None:
         for template in storage.fetch(strategy):
             install_template(template)
+            if time_to_call_it_a_day(settings.timeout, start_time):
+                break
+            if len(tracker) >= settings.max_examples:
+                break
 
     parameter_source = ParameterSource(
         random=random, strategy=strategy,
         max_tries=10,
     )
-
-    start_time = time.time()
 
     for parameter in islice(
         parameter_source, settings.max_iterations
@@ -726,6 +731,7 @@ def multifind_internal(
     def yield_on_step():
         if not result:
             return
+        yield
         improved = True
         while improved:
             yield
@@ -753,6 +759,10 @@ def multifind_internal(
                                 template = simpler
                                 break
     for _ in yield_on_step():
+        if len(tracker) >= settings.max_examples:
+            break
+        if successful_shrinks[0] >= settings.max_shrinks:
+            break
         if time_to_call_it_a_day(settings.timeout, start_time):
             debug_report('Timing out...')
             break

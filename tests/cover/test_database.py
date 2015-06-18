@@ -177,7 +177,7 @@ def test_can_handle_more_than_max_examples_values_in_db():
     db = ExampleDatabase()
 
     try:
-        settings = hs.Settings(database=db, max_examples=10)
+        settings = hs.Settings(database=db, max_examples=10, max_shrinks=0)
         seen = []
         first = [True]
         for _ in range(10):

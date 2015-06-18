@@ -19,6 +19,7 @@ import hypothesis.strategies as s
 from hypothesis import Settings, assume
 from hypothesis.core import multifind
 from hypothesis.database import ExampleDatabase
+from hypothesis.internal.tracker import Tracker
 
 
 def test_can_find_lists_by_length():
@@ -93,3 +94,17 @@ def test_can_use_the_database():
         classify, settings=Settings(database=database, timeout=0.1 * runtime))
 
     assert values == values2
+
+
+def test_multifind_respects_max_examples():
+    tracker = Tracker()
+
+    def classify(xs):
+        tracker.track(xs)
+        return (len(xs),)
+
+    multifind(
+        s.lists(s.tuples(s.booleans(), s.booleans())),
+        classify, settings=Settings(max_examples=11)
+    )
+    assert len(tracker) == 11
