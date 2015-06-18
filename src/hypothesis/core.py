@@ -528,7 +528,7 @@ def given(*generator_arguments, **generator_kwargs):
                         settings.min_satisfying_examples,
                         settings.max_iterations,
                         settings.max_examples,
-                    )
+                )
                 ):
                     if time_to_call_it_a_day(settings.timeout, start_time):
                         raise Timeout((
