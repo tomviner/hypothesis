@@ -274,7 +274,7 @@ counter-example, falsification will terminate.
 
 Settings.define_setting(
     'max_iterations',
-    default=1000,
+    default=5000,
     description="""
 Once this many iterations of the example loop have run, including ones which
 failed to satisfy assumptions and ones which produced duplicates, falsification

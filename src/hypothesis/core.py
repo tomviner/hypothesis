@@ -803,6 +803,13 @@ def multifind(
     for hitting as many of those tags as it can find.
 
     """
+    settings = settings or Settings(
+        max_examples=2000,
+        max_iterations=5000,
+        min_satisfying_examples=0,
+        max_shrinks=2000,
+    )
+
     def classify_template(template):
         return classify(strategy.reify(template))
 

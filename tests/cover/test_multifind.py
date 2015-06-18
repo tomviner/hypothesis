@@ -40,7 +40,9 @@ def test_can_classify_with_assumptions():
         assume(not x or sum(x) >= 1)
         return x
 
-    values = multifind(s.lists(s.integers(0, n)), classify)
+    values = multifind(
+        s.lists(s.integers(0, n)), classify,
+    )
     assert values == [[]] + [[i] for i in range(1, n + 1)] + [[0, 1]]
 
 
@@ -86,7 +88,11 @@ def test_can_use_the_database():
     start = time.time()
     values = multifind(
         s.lists(s.integers(min_value=0, max_value=10000)),
-        classify, settings=Settings(database=database))
+        classify, settings=Settings(
+            database=database,
+            max_iterations=10000,
+            max_examples=500,
+        ))
     runtime = time.time() - start
 
     values2 = multifind(
