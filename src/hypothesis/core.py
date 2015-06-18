@@ -683,7 +683,8 @@ def multifind_internal(
         if tracker.track(template) > 1:
             return False
         try:
-            labels = set(classify_template(template))
+            with settings:
+                labels = set(classify_template(template))
             satisfying_examples[0] += 1
             if not labels:
                 consider_template_for_label(template, Empty())
