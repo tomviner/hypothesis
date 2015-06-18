@@ -526,8 +526,10 @@ def given(*generator_arguments, **generator_kwargs):
                 ):
                     if time_to_call_it_a_day(settings.timeout, start_time):
                         raise Timeout((
-                            'Ran out of time before finding a satisfying example for %s.' +
-                            ' Only found %d examples (%d satisfying assumptions) in %.2fs.'
+                            'Ran out of time before finding a satisfying '
+                            'example for %s.'
+                            ' Only found %d examples (%d satisfying '
+                            'assumptions) in %.2fs.'
                         ) % (
                             get_pretty_function_description(classify_template),
                             len(tracker), satisfying_examples[
@@ -535,8 +537,9 @@ def given(*generator_arguments, **generator_kwargs):
                         ))
                     else:
                         raise Unsatisfiable((
-                            'Unable to satisfy assumptions of hypothesis %s. ' +
-                            'Only %d out of %d examples considered satisfied assumptions'
+                            'Unable to satisfy assumptions of hypothesis %s. '
+                            'Only %d out of %d examples considered satisfied '
+                            'assumptions'
                         ) % (
                             get_pretty_function_description(classify_template),
                             satisfying_examples[0], len(tracker)))
