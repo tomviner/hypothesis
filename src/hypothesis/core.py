@@ -779,6 +779,8 @@ def multifind_internal(
     for _ in yield_on_step():
         if stop_now(1):
             break
+        if successful_shrinks[0] >= settings.max_shrinks:
+            break
 
     if not result:
         return []
