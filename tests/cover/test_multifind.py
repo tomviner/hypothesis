@@ -111,6 +111,6 @@ def test_multifind_respects_max_examples():
 
     multifind(
         s.lists(s.tuples(s.booleans(), s.booleans())),
-        classify, settings=Settings(max_examples=11)
+        classify, settings=Settings(max_examples=11, max_shrinks=0)
     )
     assert len(tracker) == 11
