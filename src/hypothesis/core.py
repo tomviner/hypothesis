@@ -26,7 +26,6 @@ import binascii
 import functools
 import traceback
 from random import Random
-from itertools import islice
 from collections import namedtuple
 
 import hypothesis.strategies as sd
@@ -194,30 +193,34 @@ def simplify_template_such_that(
     successful_shrinks = 0
 
     changed = True
-    max_warmup = 5
-    warmup = 0
+
+    # Idea: For some particularly messy examples the naive greedy algorithm
+    # works better than the multi-pass algorithm because it is common that
+    # later shrinks unlock earlier shrinks which tend to be much larger.
+    # If we notice we're doing a lot of shrinking, we start again from the
+    # beginning. Each time we're a little more ready to start again, until we
+    # gradually converge on the greedy algorithm.
+    # The choice of sqrt(n) is designed to ensure that by the time we've spent
+    # about half our shrinking budget we are just running the straightforward
+    # greedy algorithm, because it makes n(n-1) / 2 ~ max_shrinks / 2.
+    reboot_after = max(1, int(math.sqrt(settings.max_shrinks))) + 1
     while (
-        (changed or warmup < max_warmup) and
+        changed and
         successful_shrinks < settings.max_shrinks
     ):
+        if reboot_after > 1:
+            reboot_after -= 1
         changed = False
-        warmup += 1
-        if warmup < max_warmup:
-            debug_report('Running warmup simplification round %d' % (
-                warmup
-            ))
-        elif warmup == max_warmup:
-            debug_report('Warmup is done. Moving on to fully simplifying')
-
+        local_shrinks = 0
         for simplify in search_strategy.simplifiers(random, t):
             debug_report('Applying simplification pass %s' % (
                 simplify.__name__,
             ))
-            while True:
+            while local_shrinks < reboot_after:
                 simpler = simplify(random, t)
-                if warmup < max_warmup:
-                    simpler = islice(simpler, warmup)
                 for s in simpler:
+                    if local_shrinks >= reboot_after:
+                        break
                     if time_to_call_it_a_day(settings, start_time):
                         return
                     if tracker.track(s) > 1:
@@ -225,6 +228,7 @@ def simplify_template_such_that(
                     try:
                         if f(s):
                             successful_shrinks += 1
+                            local_shrinks += 1
                             changed = True
                             yield s
                             t = s
