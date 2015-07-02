@@ -212,6 +212,7 @@ def simplify_template_such_that(
             reboot_after -= 1
         changed = False
         local_shrinks = 0
+        run_started_at = time.time()
         for simplify in search_strategy.simplifiers(random, t):
             debug_report('Applying simplification pass %s' % (
                 simplify.__name__,
@@ -227,6 +228,21 @@ def simplify_template_such_that(
                         continue
                     try:
                         if f(s):
+                            if (
+                                settings.timeout > 0 and
+                                not successful_shrinks
+                            ):
+                                time_of_first_shrink = time.time()
+                                time_left = (
+                                    start_time + settings.timeout -
+                                    time_of_first_shrink
+                                )
+                                estimated_shrinks_left = int(
+                                    time_left / (
+                                        time_of_first_shrink - run_started_at))
+                                new_reboot = max(
+                                    1, int(math.sqrt(estimated_shrinks_left)))
+                                reboot_after = min(reboot_after, new_reboot)
                             successful_shrinks += 1
                             local_shrinks += 1
                             changed = True
