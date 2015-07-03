@@ -170,8 +170,6 @@ class BasicSearchStrategy(SearchStrategy):
     # We don't have good duplicate detection for this so we cut off
     # simplification at an arbitrary level so as to not get caught in an
     # infinite loop.
-    MAX_DEPTH = 1000
-
     def __init__(
         self,
         user_generate, user_parameter=None, user_simplify=None,
@@ -217,8 +215,6 @@ class BasicSearchStrategy(SearchStrategy):
         return x.depth > y.depth
 
     def basic_simplify(self, random, template):
-        if template.depth >= self.MAX_DEPTH:
-            return
         random_seed = random.getrandbits(64)
         reified = self.reify(template)
         for i, simpler in enumerate(
