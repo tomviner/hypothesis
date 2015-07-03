@@ -251,6 +251,8 @@ def simplify_template_such_that(
                         pass
                 else:
                     break
+            else:
+                break
 
             if successful_shrinks >= settings.max_shrinks:
                 break
