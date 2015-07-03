@@ -24,7 +24,7 @@ class BitArray(object):
 
     def __init__(self, n):
         self.length = n
-        self.data = array('L')
+        self.data = array(b'L')
         self.elements_per_index = self.data.itemsize * 8
         while self.elements_per_index * len(self.data) < n:
             self.data.append(0)
