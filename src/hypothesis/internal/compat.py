@@ -137,3 +137,12 @@ def qualname(f):
 
 importlib_invalidate_caches = getattr(
     importlib, 'invalidate_caches', lambda: ())
+
+
+def byte_at(x, i):
+    result = x[i]
+    if not isinstance(result, integer_types):
+        assert len(result) == 1
+        result = ord(result)
+    assert 0 <= result < 256
+    return result

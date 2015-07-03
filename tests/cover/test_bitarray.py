@@ -42,3 +42,9 @@ def test_bitarray_errors_on_out_of_bounds_access():
             x[i] = True
         with pytest.raises(IndexError):
             x[i]
+
+
+def test_Bitarray_errors_on_non_integer_indices():
+    x = BitArray(10)
+    with pytest.raises(TypeError):
+        x['foo']

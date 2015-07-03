@@ -19,12 +19,14 @@ from __future__ import division, print_function, absolute_import, \
 
 from array import array
 
+from hypothesis.internal.compat import integer_types
+
 
 class BitArray(object):
 
     def __init__(self, n):
         self.length = n
-        self.data = array(b'L')
+        self.data = array(str('L'))
         self.elements_per_index = self.data.itemsize * 8
         while self.elements_per_index * len(self.data) < n:
             self.data.append(0)
@@ -33,8 +35,12 @@ class BitArray(object):
         return self.length
 
     def __check_index(self, i):
+        if not isinstance(i, integer_types):
+            raise TypeError('Invalid index %r of type %s' % (
+                i, type(i).__name__
+            ))
         if i < 0 or i >= self.length:
-            raise IndexError('Index %d out of range [0, %d' % (
+            raise IndexError('Index %d out of range [0, %d)' % (
                 i, self.length
             ))
 

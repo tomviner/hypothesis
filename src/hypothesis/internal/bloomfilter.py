@@ -17,7 +17,7 @@
 from __future__ import division, print_function, absolute_import, \
     unicode_literals
 
-from hypothesis.internal.compat import hrange
+from hypothesis.internal.compat import hrange, byte_at, integer_types
 from hypothesis.internal.bitarray import BitArray
 
 
@@ -43,6 +43,8 @@ class BloomFilter(object):
                 self.hash_size, len(value)))
         for i in hrange(self.hash_size // 2):
             offset = i * 2
-            hi = value[offset]
-            lo = value[offset + 1]
-            yield hi * 256 + lo
+            hi = byte_at(value, offset)
+            lo = byte_at(value, offset + 1)
+            result = hi * 256 + lo
+            assert isinstance(result, integer_types)
+            yield result
