@@ -220,8 +220,6 @@ def simplify_template_such_that(
             while local_shrinks < reboot_after:
                 simpler = simplify(random, t)
                 for s in simpler:
-                    if local_shrinks >= reboot_after:
-                        break
                     if time_to_call_it_a_day(settings, start_time):
                         return
                     if tracker.track(s) > 1:
