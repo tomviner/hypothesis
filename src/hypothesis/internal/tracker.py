@@ -21,8 +21,8 @@ import hashlib
 import collections
 
 import marshal
-from hypothesis.internal.bloomfilter import BloomFilter
 from hypothesis.internal.compat import text_type, binary_type
+from hypothesis.internal.bloomfilter import BloomFilter
 
 
 def flatten(o):
