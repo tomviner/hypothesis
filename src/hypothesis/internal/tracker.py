@@ -51,12 +51,7 @@ def flatten(o):
 
 
 def object_to_tracking_key(o):
-    k = marshal.dumps(flatten(o))
-
-    if len(k) < 20:
-        return k
-    else:
-        return hashlib.sha1(k).digest()
+    return hashlib.sha1(marshal.dumps(flatten(o))).digest()
 
 
 class Tracker(object):
