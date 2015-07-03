@@ -21,6 +21,7 @@ import hashlib
 import collections
 
 import marshal
+from hypothesis.internal.bloomfilter import BloomFilter
 from hypothesis.internal.compat import text_type, binary_type
 
 
@@ -57,10 +58,11 @@ def object_to_tracking_key(o):
 class Tracker(object):
 
     def __init__(self):
-        self.contents = set()
+        self.contents = BloomFilter(20)
+        self.size = 0
 
     def __len__(self):
-        return len(self.contents)
+        return self.size
 
     def track(self, x):
         k = object_to_tracking_key(x)
@@ -68,4 +70,5 @@ class Tracker(object):
             return 2
         else:
             self.contents.add(k)
+            self.size += 1
             return 1
