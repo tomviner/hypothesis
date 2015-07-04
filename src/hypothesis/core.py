@@ -254,9 +254,6 @@ def simplify_template_such_that(
             else:
                 break
 
-            if successful_shrinks >= settings.max_shrinks:
-                break
-
 
 def best_satisfying_template(
     search_strategy, random, condition, settings, storage, tracker=None,
